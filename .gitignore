@@ -1,0 +1,28 @@
+# Generated files
+*.iml
+*.iws
+*.ipr
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Log files
+logs/
+*.log
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+out/
