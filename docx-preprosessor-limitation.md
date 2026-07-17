@@ -42,13 +42,15 @@ These are **out of scope** for v1.0.1. They are emitted as placeholders or dropp
 
 Removed on purpose to keep the semantic body clean. They do **not** appear in `words`.
 
-- **Paragraph presentation**: shading (`w:shd`), tabs (`w:tabs`),
+- **Paragraph presentation**: shading (`w:shd`),
   frame (`w:framePr`), `pageBreakBefore`, `keepNext`,
   `widowControl`, `outlineLvl`.
   Note: `w:jc` (justification) is **preserved** as `<s:align>` in `<style>` (LOSSLESS_METADATA).
   Note: `w:pBdr` (borders) is **preserved** via compact `at` attribute on `<p>`/`<h1>`-`<h9>`.
   Note: `w:pPr/w:spacing/@w:line` is **preserved** as `<s:line>` in `<style>` (P1, LOSSLESS_METADATA).
   Note: `w:pPr/w:textAlignment` is **preserved** as `<p valign="...">` (P8, LOSSLESS_METADATA).
+  Note: `w:pPr/w:tabs` is **preserved** as `<s:tab>` in `<style>` (LOSSLESS_METADATA).
+  Note: `w:tab` is **preserved** as `<tab/>` inline element (LOSSLESS_METADATA).
 - **Run presentation**: `w:rPr/w:spacing`,
   `w:shadow`, `w:emboss`, `w:imprint`, `w:effect`, `w:border` (run), `w:shd` (run).
   Note: `w:rFonts`, `w:sz`, `w:color`, `w:highlight` are **preserved** via `<span>` (see spec §3.2).
@@ -84,7 +86,7 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 - **Units**: all layout values resolved to the declared `unit` (default `in`); twips
   converted. Inconsistent source units are normalized — original unit labels are not kept.
 - **Processing mode**: `mode="semantic"` (default) normalizes whitespace; `mode="lossless"` preserves more layout detail for round-tripping.
-- **Whitespace**: in `semantic` mode, repeated spaces collapsed, `w:tab` → single space,
+- **Whitespace**: in `semantic` mode, repeated spaces collapsed, `w:tab` → `<tab/>`,
   `w:br`/`w:cr` → `<br/>`. Honors `xml:space="preserve"` when present on `<w:t>`.
   **Exception**: content inside `<pre>` preserves original spacing verbatim in both modes.
 - **Text**: kept verbatim (no translation/summarization). Tracked-deletion text is wrapped
@@ -149,6 +151,7 @@ The following gaps were identified and addressed during specification review:
 | **Cell spacing dropped** | Now preserved via `<table cellSpacing="...">` (P11) |
 | **Text direction in cell dropped** | Now preserved via `<td textDir="...">` / `<th textDir="...">` (P12) |
 | **No-wrap flag dropped** | Now preserved via `<td noWrap="true">` / `<th noWrap="true">` (P13) |
+| **Custom styles dropped** | Now preserved via `<s:custom>` in `<style>` + `c="..."` attribute on element |
 | **`<style>` optional** | Now REQUIRED with at minimum `<s:page>` (size + margins); default unit changed to `in` |
 | **Borders dropped** | Now preserved via compact `at` attribute on `<p>`, `<h1>`-`<h9>`, `<td>`, `<th>`, `<table>` |
 | **Bookmarks dropped** | Now preserved in `<notes>` as `<bm id="name"/>` |

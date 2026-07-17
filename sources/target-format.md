@@ -47,7 +47,9 @@ Layout configuration extracted from `w:sectPr`:
 - `<s:align>` - paragraph alignment
 - `<s:cols>` - multi-column layout
 - `<s:col>` - table column widths
+- `<s:tab>` - tab stop definitions
 - `<s:theme>` - color tokens
+- `<s:custom>` - custom style definitions
 
 ### Content Blocks (`<write>`)
 Semantic content elements:
@@ -72,6 +74,7 @@ Semantic content elements:
 - `<ics>` - Complex Script italic
 - `<a>` - hyperlinks
 - `<br>` - line breaks
+- `<tab>` - tab character (self-closing)
 - `<fn-ref id="n" type="footnote|endnote">` - footnote/endnote marker (self-closing, type required)
 - `<ins>`/`<del>` - tracked changes (lossless mode only)
 - `<span>` - font/style span (font, size, color, highlight, lang, hidden, fontEA, fontCS, sizeCS)
@@ -87,7 +90,7 @@ Semantic content elements:
 ### Common Attributes
 - `lang="..."` - BCP 47 language tag (block elements and `<span>`)
 - `dir="rtl|ltr"` - text direction
-- `c="..."` - original style name
+- `c="..."` - original style name (only emitted when style name ≠ element name, e.g., custom styles)
 - `at="..."` - compact border representation (e.g., `at="bb 12 s1 #000000"`)
 
 ### Border Attribute (`at`)

@@ -43,7 +43,7 @@ This document defines the complete `words` XML grammar for the DOCX Preprocessor
 <h1 at="bb 12 s1 #000000" lang="en">...</h1>
 ```
 Attributes:
-- `c="..."` - original style name (REQUIRED)
+- `c="..."` - original style name (only emitted when style name ≠ element name, e.g., custom styles)
 - `at="..."` - compact border representation (see Border Attribute section)
 - `lang="..."` - BCP 47 language tag
 
@@ -121,6 +121,7 @@ Attributes:
 - `<sup>` - superscript
 - `<bcs>` - Complex Script bold — P16
 - `<ics>` - Complex Script italic — P17
+- `<tab/>` - tab character (self-closing)
 
 ### Font/Style Span
 ```xml
@@ -179,6 +180,8 @@ Format: `at="[side] [width] [style][space] [color]; ..."`
   <s:cols n="2" space="0.5"/>
   <s:col ref="1" w="1.39"/>
   <s:theme bg="FFFFFF" fg="000000"/>
+  <s:custom name="MyHeading" basedOn="Heading1" type="paragraph"
+            font="Arial" size="16" color="FF0000" bold="true"/>
 </style>
 ```
 
@@ -189,6 +192,39 @@ Format: `at="[side] [width] [style][space] [color]; ..."`
 Attributes:
 - `n="n"` - number of columns — P19
 - `space="..."` - column spacing (in declared unit) — P19
+
+### `<s:tab>` - Tab Stop Definition
+```xml
+<s:tab el="p" pos="1.0" align="left" leader="none"/>
+<s:tab el="p" pos="2.0" align="center" leader="dot"/>
+<s:tab el="h1" pos="3.0" align="right" leader="dash"/>
+```
+Attributes:
+- `el="p|h1|h2|..."` - element type this tab stop applies to
+- `pos="..."` - tab stop position (in declared unit)
+- `align="left|center|right|decimal"` - tab alignment
+- `leader="none|dot|dash|underscore|bar"` - leader character
+
+### `<s:custom>` - Custom Style Definition
+```xml
+<s:custom name="MyHeading" basedOn="Heading1" type="paragraph"
+          font="Arial" fontEA="MS Mincho" fontCS="Arial"
+          size="16" sizeCS="14" color="FF0000"
+          bold="true" italic="true" underline="single"
+          strikethrough="true" smallCaps="true" uppercase="true"
+          alignment="center" spacingBefore="0.17" spacingAfter="0.08"
+          lineSpacing="1.5" lineRule="auto"
+          indentLeft="0.5" indentRight="0.5" indentFirst="0.25" indentHanging="0.25"
+          borderWidth="0.5" borderColor="000000" borderStyle="single"
+          cellSpacing="0.1" width="8"/>
+```
+Attributes (all optional except `name`):
+- `name="..."` - style name (REQUIRED)
+- `basedOn="..."` - parent style name (optional)
+- `type="paragraph|character|table"` - style type (optional)
+- Run properties: `font`, `fontEA`, `fontCS`, `size`, `sizeCS`, `color`, `bold`, `italic`, `underline`, `strikethrough`, `smallCaps`, `uppercase`
+- Paragraph properties: `alignment`, `spacingBefore`, `spacingAfter`, `lineSpacing`, `lineRule`, `indentLeft`, `indentRight`, `indentFirst`, `indentHanging`
+- Table properties: `borderWidth`, `borderColor`, `borderStyle`, `cellSpacing`, `width`
 
 ### `<header id="n">` / `<footer id="n">` - Header/Footer
 ```xml

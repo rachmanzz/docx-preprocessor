@@ -92,7 +92,17 @@ A flat, semantic, versioned XML:
     <s:align el="p" value="left|center|right|both"/> # paragraph alignment (LOSSLESS_METADATA)
     <s:cols n=".." space=".."/>  # multi-column layout — P19
     <s:col ref="n" w=".."/>     # column widths / grid; ref = table id (1-based index)
+    <s:tab el="p|h1" pos="1.0" align="left|center|right|decimal" leader="none|dot|dash|underscore|bar"/>  # tab stop definition
     <s:theme bg=".." fg=".."/>  # optional color tokens
+    <s:custom name=".." basedOn=".." type="paragraph|character|table"
+              font=".." fontEA=".." fontCS=".." size=".." sizeCS=".."
+              color=".." bold="true" italic="true" underline=".."
+              strikethrough="true" smallCaps="true" uppercase="true"
+              alignment=".." spacingBefore=".." spacingAfter=".."
+              lineSpacing=".." lineRule="auto|exact|atLeast"
+              indentLeft=".." indentRight=".." indentFirst=".." indentHanging=".."
+              borderWidth=".." borderColor=".." borderStyle=".."
+              cellSpacing=".." width=".."/>  # custom style definition
   </style>
   <header id="n">                # header content (per section, optional)
     <p>...</p>               # same block elements as <write>
@@ -122,6 +132,7 @@ A flat, semantic, versioned XML:
     <span font=".." size=".." color=".." highlight=".." lang=".." hidden="true" fontEA=".." fontCS=".." sizeCS="..">...</span>  # font/style span (inline)
     <a href="...">...</a>   # hyperlink (r:id or instrText HYPERLINK) — MOD-3
     <br type="textWrapping|page|column|clear"/> # line break — MIN-1
+    <tab/>                  # tab character (moves to next tab stop)
     <fn-ref id="n" type="footnote|endnote"/>  # marker with type attribute
     <ins>...</ins> / <del>...</del> # tracked change (optional, LOSSLESS_METADATA)
     <ul type="bullet|...">    # unordered list (type from numFmt)
@@ -261,6 +272,20 @@ Allowed units: `in` (inch, default), `pt` (point), `px` (pixel), `cm`, `mm`.
   `ref="n"` attribute that matches the `<table id="n">` it belongs to (1-based document
   order). Tables without a `w:tblGrid` emit no `<s:col>`.
 - `<s:theme>` — optional color tokens (background/foreground) from theme part.
+- `<s:custom>` — custom style definition (from `w:style` in `styles.xml`):
+  `name` = style name (REQUIRED); `basedOn` = parent style name (optional);
+  `type` = paragraph|character|table (optional); formatting properties as attributes
+  (font, size, color, bold, italic, alignment, spacing, indentation, borders, etc.).
+  Only emitted for custom styles (not standard Heading1-9, Normal, etc.).
+  Example: `<s:custom name="MyHeading" basedOn="Heading1" font="Arial" color="FF0000"/>`.
+
+### `c` Attribute — Original Style Name
+
+The `c` attribute preserves the original style name from DOCX for round-tripping.
+- **Standard styles** (Heading1-9, Normal, Title, Quote, ListParagraph, etc.): `c` is NOT emitted
+  (redundant — element name already implies the style).
+- **Custom styles**: `c` IS emitted to preserve the original style name.
+- Example: `<h1 c="MyCustomHeading">` for custom style, `<h1>` for standard Heading1.
 
 ### `at` Attribute — Compact Border Representation
 
@@ -333,7 +358,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 |--------------|----------|-----------------|-----------|
 | `w:body` | container | unwrap | structural only |
 | `w:p` | struct | `<h1>`-`<h9>`/`<p>`/`<li>`/`<blockquote>` | semantic block |
-| `w:pPr/w:pStyle` | style | `c="..."` attr | keep style name |
+| `w:pPr/w:pStyle` | style | `c="..."` attr (only when style name ≠ element name) + `<s:custom>` in `<style>` | keep style name + custom style definition |
 | `w:pPr/w:numPr` | list | drives `<ul>`/`<ol>` | list structure |
 | `w:pPr/w:spacing` | layout | `<s:gap before/after>` + `<s:line>` | vertical rhythm + line spacing |
 | `w:pPr/w:ind` | layout | `<s:indent>` (in `<style>`) | indentation preserved (MOD-5) |
@@ -344,7 +369,8 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:pPr/w:suppressLineNumbers`,`w:keepNext`,`w:widowControl` | misc | DROP | renderer hints |
 | `w:pPr/w:pBdr` | present | `at="bb ..."` on `<p>` | paragraph borders preserved compact |
 | `w:pPr/w:shd` | present | DROP | paragraph shading noise |
-| `w:pPr/w:tabs`,`w:pageBreakBefore`,`w:framePr` | misc | DROP | layout noise |
+| `w:pPr/w:tabs` | tab stops | `<s:tab el=".." pos=".." align=".." leader=".."/>` in `<style>` | tab stop definition preserved |
+| `w:tab` | break | `<tab/>` | tab character preserved |
 | `w:r` | run | text content | — |
 | `w:t` | text | element text | — |
 | `w:rPr/w:b` | fmt | `<b>` | bold |
@@ -367,7 +393,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:rPr/w:iCs` | keep | `<ics>...</ics>` — P17 | Complex Script italic |
 | `w:rPr/w:szCs` | keep | `sizeCS="..."` on `<span>` — P18 | Complex Script font size |
 | `w:br`,`w:cr` | break | `<br type="textWrapping|page|column|clear"/>` | explicit break w/ kind (MIN-1) |
-| `w:tab` | break | normalize → single space | tab noise |
+| `w:tab` | break | `<tab/>` | tab character preserved |
 | `w:noBreakHyphen`,`w:softHyphen`,`w:sym` | text | keep as char | literal |
 | `w:hyperlink` | link | `<a href>` (r:id or instrText HYPERLINK) | link (MOD-3) |
 | `w:instrText` (field code) | field | DROP unless HYPERLINK | field codes are noise |
@@ -383,7 +409,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:tblGrid`/`w:gridCol` | table layout | `<s:col ref="n">` widths (in `<style>`) | column widths linked by `ref` (MIN-3) |
 | `w:tblPr` (borders) | present | `at="..."` on `<table>` | table borders preserved compact |
 | `w:tblPr` (shading) | present | DROP | table shading noise |
-| `w:tblPr/w:tblStyle` | style | `c="..."` attr on `<table>` | keep style name |
+| `w:tblPr/w:tblStyle` | style | `c="..."` attr on `<table>` + `<s:custom>` in `<style>` | keep style name + custom style definition |
 | `w:tblPr/w:tblCaption` | keep | `caption="..."` attr on `<table>` | accessibility caption |
 | `w:tblPr/w:tblDescription` | keep | `summary="..."` attr on `<table>` | accessibility description |
 | `w:tblPr/w:tblW` | keep | `width="..."` attr on `<table>` | table width |
@@ -586,15 +612,15 @@ Every OOXML construct the preprocessor encounters is classified into one of four
     for round-tripping or legal/document-reconstruction scenarios.
 - **Whitespace normalization** (applies in `semantic` mode only):
   - Collapse repeated spaces to single space, trim line breaks inside a run.
-  - `w:tab` → single space; `w:br`/`w:cr` → `<br type="…"/>`.
+  - `w:tab` → `<tab/>` (tab character preserved); `w:br`/`w:cr` → `<br type="…"/>`.
   - **Exception**: content inside `<pre>` blocks is exempt — all original spacing,
     indentation, and line breaks are preserved verbatim regardless of mode.
   - **`xml:space` preservation**: if a `<w:t>` element carries `xml:space="preserve"`,
   the preprocessor MUST honor it and NOT collapse whitespace within that run,
   regardless of mode. This prevents data loss in poetry, code snippets, and
   ASCII diagrams where spacing is intentional.
-- `w:tab` → single space (except inside `<pre>` where it remains literal tab, or
-  when `xml:space="preserve"`); `w:br`/`w:cr` → `<br type="…"/>` preserving `@w:type`
+- `w:tab` → `<tab/>` (tab character preserved); inside `<pre>` it remains literal tab (`\t`);
+  `w:br`/`w:cr` → `<br type="…"/>` preserving `@w:type`
   (`textWrapping` default, `page`, `column`, `clear`) (MIN-1).
 - `dir="rtl"` attributes are preserved on the relevant elements (MOD-7).
 - Preserve intentional paragraph breaks as separate elements.

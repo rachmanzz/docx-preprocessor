@@ -7,8 +7,8 @@ This document defines the transformation rules from DOCX OOXML to `words` XML.
 | Category | Description | Examples |
 |----------|-------------|----------|
 | **KEEP** | Mapped to semantic `words` elements | `w:p` → `<p>`, `w:r` → text content |
-| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<ins>`/`<del>` |
-| **DROP** | Presentation noise safely removed | `w:pPr/w:shd`, `w:rPr/w:spacing`, `w:pPr/w:tabs` |
+| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<ins>`/`<del>`, `w:pPr/w:tabs` → `<s:tab>` in `<style>`, `w:tab` → `<tab/>` |
+| **DROP** | Presentation noise safely removed | `w:pPr/w:shd`, `w:rPr/w:spacing` |
 | **EXCLUDE** | Out of scope / too complex | `w:drawing` (images), `w:object` (OLE), `w:Math` |
 
 ## Paragraph Transformation
@@ -220,6 +220,65 @@ Border format: `at="[side] [width] [style][space] [color]; ..."`
 - `w:sectPr/w:cols/@w:num` → `n` attribute (number of columns)
 - `w:sectPr/w:cols/@w:space` → `space` attribute (column spacing, converted to declared unit)
 - Only emitted when column count > 1
+
+## Style Transformation
+
+### Custom Style Extraction
+
+When a paragraph or table has a custom style (`w:pPr/w:pStyle` or `w:tblPr/w:tblStyle`):
+
+1. Look up style in `styles.xml`
+2. Resolve inheritance chain (`w:basedOn`) to find semantic element
+3. Emit `<s:custom>` in `<style>` block with formatting properties
+4. Add `c="styleName"` attribute to element (only when style name ≠ element name)
+
+### `<s:custom>` Mapping
+
+- `w:style/@w:styleId` → `name` attribute
+- `w:style/w:basedOn/@w:val` → `basedOn` attribute
+- `w:style/@w:type` → `type` attribute (paragraph|character|table)
+- `w:style/w:rPr/*` → run properties (font, size, color, bold, etc.)
+- `w:style/w:pPr/*` → paragraph properties (alignment, spacing, indentation)
+- `w:style/w:tblPr/*` → table properties (borders, width)
+
+### Standard vs Custom Styles
+
+| Style Type | Example | Output | `c` emitted? |
+|---|---|---|---|
+| Standard | Heading1 | `<h1>` | ❌ No |
+| Standard | Normal | `<p>` | ❌ No |
+| Custom | MyHeading (basedOn Heading1) | `<h1 c="MyHeading">` | ✅ Yes |
+| Custom | CustomPara (basedOn Normal) | `<p c="CustomPara">` | ✅ Yes |
+| Custom | TableGrid | `<table c="TableGrid">` | ✅ Yes |
+
+## Tab Stop Transformation
+
+### Tab Stops (`w:pPr/w:tabs`)
+
+```
+w:pPr/w:tabs/w:tab/@w:val    → <s:tab> align attribute
+w:pPr/w:tabs/w:tab/@w:pos    → <s:tab> pos attribute (÷ twips if needed)
+w:pPr/w:tabs/w:tab/@w:leader → <s:tab> leader attribute
+w:pPr/@w:pStyle               → <s:tab> el attribute (maps style to element)
+```
+
+| `w:val` | `align` | `leader` |
+|---------|---------|----------|
+| `left` | `left` | — |
+| `center` | `center` | — |
+| `right` | `right` | — |
+| `decimal` | `decimal` | — |
+| `num` | `decimal` | — |
+| `clear` | `left` | — |
+| `dot` | — | `dot` |
+| `hyphen` | — | `dash` |
+| `underscore` | — | `underscore` |
+| `heavy` | — | `bar` |
+
+### Tab Character (`w:tab`)
+
+- `w:tab` → `<tab/>` (self-closing inline element)
+- Exception: inside `<pre>` block, `w:tab` → literal tab character (`\t`)
 
 ## Bookmark Transformation
 

@@ -132,6 +132,9 @@ The 561-token overhead (vs plain text) preserves:
 | Text direction in cell | `<td textDir="...">` / `<th textDir="...">` | ✅ 100% |
 | No-wrap flag | `<td noWrap="true">` / `<th noWrap="true">` | ✅ 100% |
 | Multi-column layout | `<s:cols n=".." space=".."/>` | ✅ 100% |
+| Custom styles | `<s:custom name="..." basedOn="..." .../>` + `c="..."` | ✅ 100% |
+| Tab stops | `<s:tab el=".." pos=".." align=".." leader=".."/>` | ✅ 100% |
+| Tab character | `<tab/>` | ✅ 100% |
 
 ### 2.2 What is Reduced (Compact)
 
@@ -153,7 +156,6 @@ The 561-token overhead (vs plain text) preserves:
 | `w:tblPr/w:shd` (table shading) | Removed | Presentation noise |
 | `w:rPr/w:spacing` (char spacing) | Removed | Presentation noise |
 | `w:rPr/w:shadow`, `w:emboss`, `w:imprint` | Removed | Visual effects |
-| `w:pPr/w:tabs` | Removed | Tab stops |
 | `w:pPr/w:pageBreakBefore` | Removed | Use `<br type="page"/>` |
 | `w:pPr/w:framePr` | Removed | Frame properties |
 | `w:pPr/w:keepNext`, `w:widowControl` | Removed | Renderer hints |

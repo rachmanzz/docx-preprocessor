@@ -45,6 +45,8 @@ These are preserved in `LOSSLESS_METADATA` category for round-tripping:
 | Text direction in cell | `w:tcPr/w:textDirection` | `<td textDir="...">` / `<th textDir="...">` — P12 | bttRtl, tbRl, etc. |
 | No-wrap flag | `w:tcPr/w:noWrap` | `<td noWrap="true">` / `<th noWrap="true">` — P13 | Boolean flag |
 | Multi-column layout | `w:sectPr/w:cols` | `<s:cols n=".." space=".."/>` — P19 | Column count + spacing |
+| Tab stops | `w:pPr/w:tabs` | `<s:tab el=".." pos=".." align=".." leader=".."/>` | Position + alignment + leader |
+| Tab character | `w:tab` | `<tab/>` | Moves to next tab stop |
 
 ## Language Limitations
 
@@ -91,8 +93,9 @@ For image processing, run separate OCR/Vision pass and inject captions before do
 | Aspect | Resolution |
 |--------|------------|
 | Built-in styles | Mapped to semantic elements |
-| Custom styles | `c="<customName>"` attribute on element |
+| Custom styles | `c="<customName>"` attribute on element + `<s:custom>` in `<style>` |
 | Style inheritance | `w:basedOn` chain walked to find semantic match |
+| Style properties | Preserved in `<s:custom>` (font, size, color, alignment, spacing, etc.) |
 
 ## Metadata Loss
 
