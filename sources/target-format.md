@@ -48,7 +48,7 @@ Layout configuration extracted from `w:sectPr`:
 - `<s:cols>` - multi-column layout
 - `<s:col>` - table column widths
 - `<s:tab>` - tab stop definitions
-- `<s:theme>` - color tokens
+- `<s:theme>` - global defaults (font, fontEA, fontCS, bg, fg)
 - `<s:custom>` - custom style definitions
 
 ### Content Blocks (`<write>`)

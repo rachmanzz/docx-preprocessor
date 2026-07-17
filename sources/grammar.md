@@ -179,11 +179,23 @@ Format: `at="[side] [width] [style][space] [color]; ..."`
   <s:align el="p" value="left|center|right|both"/>
   <s:cols n="2" space="0.5"/>
   <s:col ref="1" w="1.39"/>
-  <s:theme bg="FFFFFF" fg="000000"/>
+  <s:theme font="Calibri" fontEA="MS Mincho" fontCS="Arial" bg="FFFFFF" fg="000000"/>
   <s:custom name="MyHeading" basedOn="Heading1" type="paragraph"
             font="Arial" size="16" color="FF0000" bold="true"/>
 </style>
 ```
+
+### `<s:theme>` - Global Defaults
+
+```xml
+<s:theme font="Calibri" fontEA="MS Mincho" fontCS="Arial" bg="FFFFFF" fg="000000"/>
+```
+Attributes (all optional):
+- `font="..."` - global default font family (from docDefaults/theme fontScheme)
+- `fontEA="..."` - global default East Asian font family
+- `fontCS="..."` - global default Complex Script font family
+- `bg="..."` - background color hex
+- `fg="..."` - foreground color hex
 
 ### `<s:cols>` - Multi-Column Layout
 ```xml

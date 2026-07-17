@@ -135,6 +135,7 @@ The 561-token overhead (vs plain text) preserves:
 | Custom styles | `<s:custom name="..." basedOn="..." .../>` + `c="..."` | ✅ 100% |
 | Tab stops | `<s:tab el=".." pos=".." align=".." leader=".."/>` | ✅ 100% |
 | Tab character | `<tab/>` | ✅ 100% |
+| Global default font | `<s:theme font=".." fontEA=".." fontCS="..">` | ✅ 100% |
 
 ### 2.2 What is Reduced (Compact)
 

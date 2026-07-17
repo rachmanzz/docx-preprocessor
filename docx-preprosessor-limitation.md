@@ -89,6 +89,7 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 - **Whitespace**: in `semantic` mode, repeated spaces collapsed, `w:tab` → `<tab/>`,
   `w:br`/`w:cr` → `<br/>`. Honors `xml:space="preserve"` when present on `<w:t>`.
   **Exception**: content inside `<pre>` preserves original spacing verbatim in both modes.
+- **Global font**: `w:docDefaults/w:rPrDefault/w:rPr/w:rFonts` and theme fontScheme resolved to `<s:theme font=".." fontEA=".." fontCS="..">`. Priority: inline > style > global.
 - **Text**: kept verbatim (no translation/summarization). Tracked-deletion text is wrapped
   in `<del>` in `lossless` mode; dropped in `semantic` mode.
 - **XML escaping**: `&`, `<`, `>`, `"` are escaped per XML 1.0. Forbidden control characters

@@ -93,7 +93,7 @@ A flat, semantic, versioned XML:
     <s:cols n=".." space=".."/>  # multi-column layout — P19
     <s:col ref="n" w=".."/>     # column widths / grid; ref = table id (1-based index)
     <s:tab el="p|h1" pos="1.0" align="left|center|right|decimal" leader="none|dot|dash|underscore|bar"/>  # tab stop definition
-    <s:theme bg=".." fg=".."/>  # optional color tokens
+    <s:theme font=".." fontEA=".." fontCS=".." bg=".." fg=".."/>  # optional global defaults (font + color tokens)
     <s:custom name=".." basedOn=".." type="paragraph|character|table"
               font=".." fontEA=".." fontCS=".." size=".." sizeCS=".."
               color=".." bold="true" italic="true" underline=".."
@@ -271,7 +271,7 @@ Allowed units: `in` (inch, default), `pt` (point), `px` (pixel), `cm`, `mm`.
 - `<s:col>` — column/grid widths (from `w:tblGrid` / `w:gridCol`). Each `<s:col>` carries a
   `ref="n"` attribute that matches the `<table id="n">` it belongs to (1-based document
   order). Tables without a `w:tblGrid` emit no `<s:col>`.
-- `<s:theme>` — optional color tokens (background/foreground) from theme part.
+- `<s:theme>` — optional global defaults (font, fontEA, fontCS, bg, fg) from theme part + docDefaults.
 - `<s:custom>` — custom style definition (from `w:style` in `styles.xml`):
   `name` = style name (REQUIRED); `basedOn` = parent style name (optional);
   `type` = paragraph|character|table (optional); formatting properties as attributes

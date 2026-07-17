@@ -47,6 +47,7 @@ These are preserved in `LOSSLESS_METADATA` category for round-tripping:
 | Multi-column layout | `w:sectPr/w:cols` | `<s:cols n=".." space=".."/>` — P19 | Column count + spacing |
 | Tab stops | `w:pPr/w:tabs` | `<s:tab el=".." pos=".." align=".." leader=".."/>` | Position + alignment + leader |
 | Tab character | `w:tab` | `<tab/>` | Moves to next tab stop |
+| Global default font | `w:docDefaults` + theme fontScheme | `<s:theme font=".." fontEA=".." fontCS="..">` | Font family + EA + CS |
 
 ## Language Limitations
 

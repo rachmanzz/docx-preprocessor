@@ -232,6 +232,14 @@ When a paragraph or table has a custom style (`w:pPr/w:pStyle` or `w:tblPr/w:tbl
 3. Emit `<s:custom>` in `<style>` block with formatting properties
 4. Add `c="styleName"` attribute to element (only when style name ≠ element name)
 
+### `<s:theme>` Mapping (Global Defaults)
+
+Global font defaults are resolved from two sources:
+1. **docDefaults**: `w:docDefaults/w:rPrDefault/w:rPr/w:rFonts/@w:ascii` → `font`, `@w:eastAsia` → `fontEA`, `@w:cs` → `fontCS`
+2. **Theme fontScheme**: `a:majorFont`/`a:minorFont` → used when docDefaults not present
+
+Priority: inline `<span font>` > style `<s:custom font>` > global `<s:theme font>`
+
 ### `<s:custom>` Mapping
 
 - `w:style/@w:styleId` → `name` attribute
