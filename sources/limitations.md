@@ -8,7 +8,7 @@ These constructs are **out of scope** for v1.0.1:
 
 | Construct | Source | Behavior | Impact |
 |-----------|--------|----------|--------|
-| Images (non-textbox) | `w:drawing` image blip, `w:pict` (VML) | `<d:img alt="..."/>` placeholder | No pixel/vector data |
+| Images (non-textbox) | `w:drawing` image blip, `w:pict` (VML) | `<img alt="..."/>` placeholder | No pixel/vector data |
 | OLE objects | `w:object` | dropped | Embedded spreadsheets/Visio lost |
 | Charts | chart drawing parts | dropped | Data visualizations lost |
 | SmartArt/diagrams | smartart drawing parts | dropped | Flowcharts/org-charts lost |
@@ -17,7 +17,7 @@ These constructs are **out of scope** for v1.0.1:
 
 **Rationale**: These require specialized renderers and/or carry binary payloads. Deterministic conversion would bloat token budget.
 
-**Textboxes (`w:txbxContent`) are NOT excluded** - their text content is extracted into `<write>` (CRIT-1). Images embedded inside a textbox are still excluded as `<d:img>`.
+**Textboxes (`w:txbxContent`) are NOT excluded** - their text content is extracted into `<write>` (CRIT-1). Images embedded inside a textbox are still excluded as `<img>`.
 
 ## Lossless Metadata Preserved
 
@@ -26,19 +26,23 @@ These are preserved in `LOSSLESS_METADATA` category for round-tripping:
 | Construct | Source | Preservation | Notes |
 |-----------|--------|--------------|-------|
 | Paragraph alignment | `w:pPr/w:jc` | `<s:align>` in `<style>` | Useful for layout-aware processing |
-| Tracked changes | `w:ins`/`w:del` | `<d:change>` (lossless mode only) | Revision tracking preserved |
+| Tracked changes | `w:ins`/`w:del` | `<change>` (lossless mode only) | Revision tracking preserved |
+| Bookmarks | `w:bookmarkStart` | `<bm id="name"/>` in `<notes>` | Bookmark positions preserved |
+| Comments | `w:commentRange` | `<comment>` in `<notes>` | Comment text preserved |
+| Paragraph borders | `w:pPr/w:pBdr` | `at="..."` on `<d:p>`/`<d:h>` | Compact border representation |
+| Table/cell borders | `w:tblPr`/`w:tcPr` | `at="..."` on `<d:table>`/`<td>`/`<th>` | Compact border representation |
 
 ## Language Limitations
 
 | Issue | Impact | Resolution |
 |-------|--------|------------|
 | Inline language changes | Language context lost for runs with different language than paragraph | First run's language takes precedence |
-| No `<d:span>` element | Cannot preserve inline language or styling changes | Block-level `lang` only |
+| `<span>` scope | `<span>` supports font/size/color/highlight but not `lang` | Block-level `lang` only |
 
 ## Image Handling
 
 Images remain a **hard limitation**:
-- Only `<d:img alt="..."/>` placeholder emitted
+- Only `<img alt="..."/>` placeholder emitted
 - No pixel/vector data extracted
 - No caption, title, or positioning preserved
 
@@ -48,7 +52,7 @@ For image processing, run separate OCR/Vision pass and inject captions before do
 
 | Aspect | Preserved | Lost |
 |--------|-----------|------|
-| Borders | NO | Border width/style/color |
+| Borders | YES (via `at` attribute) | — |
 | Shading | NO | Fill color/pattern |
 | Column widths | YES (via `<s:col>`) | Per-cell `w:tcW` overrides |
 
@@ -56,8 +60,8 @@ For image processing, run separate OCR/Vision pass and inject captions before do
 
 | Aspect | Status |
 |--------|--------|
-| Markers | `<d:fn-ref id="n" type="..."/>` |
-| Bodies | `<d:fn id="n" type="...">` in `<notes>` |
+| Markers | `<fn-ref id="n" type="..."/>` |
+| Bodies | `<fn id="n" type="...">` in `<notes>` |
 | Cross-references | Not resolved |
 
 ## Style Resolution
@@ -73,9 +77,9 @@ For image processing, run separate OCR/Vision pass and inject captions before do
 | Metadata | Status |
 |----------|--------|
 | Author, title, dates | Preserved in `<meta>` |
-| Revision history | Only tracked changes (`<d:change>`) |
-| Comments | Dropped |
-| Bookmarks | Dropped |
+| Revision history | Only tracked changes (`<change>`) |
+| Comments | Preserved in `<notes>` as `<comment>` |
+| Bookmarks | Preserved in `<notes>` as `<bm>` |
 | Field codes | Dropped (except HYPERLINK) |
 
 ## Performance Constraints
@@ -90,10 +94,10 @@ For image processing, run separate OCR/Vision pass and inject captions before do
 
 1. No DOCX regeneration capability
 2. No pixel-perfect layout preservation
-3. No language preservation at inline/run level
-4. No comment preservation
-5. No field code preservation (except HYPERLINK)
-6. No revision tracking outside `mode="lossless"`
+3. No language preservation at inline/run level (`<span>` covers font/size/color/highlight only)
+4. No field code preservation (except HYPERLINK)
+5. No revision tracking outside `mode="lossless"`
+6. Shading intentionally dropped (borders preserved via `at`)
 
 ## External Dependencies
 

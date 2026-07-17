@@ -66,18 +66,22 @@ docx-preprocess input.docx --with-metadata -o output.words.xml
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<words xmlns="urn:words:v1" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <meta>
     <title>Document Title</title>
     <author>John Doe</author>
   </meta>
-  <style unit="pt">
-    <s:page size="A4" mt="54" mb="54" ml="54" mr="54"/>
+  <style unit="in">
+    <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
   </style>
   <write>
-    <d:h c="Heading1">Introduction</d:h>
-    <d:p lang="en">This is a paragraph.</d:p>
+    <d:h c="Heading1" at="bb 12 s1 #000000">Introduction</d:h>
+    <d:p lang="en">This is a <b>bold</b> and <i>italic</i> paragraph.</d:p>
   </write>
+  <notes>
+    <bm id="Section1"/>
+    <comment id="1" author="Reviewer" date="2024-01-15T10:30:00Z">Good start.</comment>
+  </notes>
 </words>
 ```
 
@@ -111,13 +115,18 @@ try {
 | Textboxes | ✓ |
 | Code blocks | ✓ |
 | Table merge | ✓ |
+| Borders | ✓ (compact `at` attribute) |
+| Bookmarks | ✓ (in `<notes>`) |
+| Comments | ✓ (in `<notes>`) |
+| Bold/Italic/Underline | ✓ |
+| Font/Size/Color | ✓ (via `<span>`) |
 
 ## Limitations
 
 - No DOCX regeneration
-- No layout preservation
+- No pixel-perfect layout preservation (layout metadata preserved, not rendering)
 - No image content extraction
-- No comment preservation
+- Shading intentionally dropped (borders preserved)
 
 ## Support
 

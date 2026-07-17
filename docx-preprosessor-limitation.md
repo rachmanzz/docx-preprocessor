@@ -16,13 +16,13 @@ These are **out of scope** for v1.0.1. They are emitted as placeholders or dropp
 
 | Excluded construct | OOXML source | Behavior in `words` | Impact |
 |--------------------|--------------|--------------------|--------|
-| **Images (non-textbox)** | `w:drawing` image blip, `w:pict` (VML) | `<d:img alt="..."/>` placeholder; no pixel/vector data | Visual content (photos, diagrams, scanned specs) lost |
+| **Images (non-textbox)** | `w:drawing` image blip, `w:pict` (VML) | `<img alt="..."/>` placeholder; no pixel/vector data | Visual content (photos, diagrams, scanned specs) lost |
 | **OLE objects** | `w:object` | dropped | Embedded spreadsheets/Visio lost |
 | **Charts** | chart drawing parts | dropped | Data visualizations lost |
 | **SmartArt / diagrams** | smartart drawing parts | dropped | Flowcharts/org-charts lost |
 | **Office Math** | `w:Math` (OMML) | dropped (not converted to LaTeX/MathML) | Equations absent |
 | **External chunks** | `w:altChunk` | dropped | Embedded HTML lost |
-| ~~**Headers/footers content**~~ | ~~`w:hdrReference`/`w:ftrReference`~~ | ~~dropped~~ | **RESOLVED**: kept in `<header>`/`<footer>` blocks (see spec §2.4) |
+| ~~**Headers/footers content**~~ | ~~`w:hdrReference`/`w:ftrReference`~~ | ~~dropped~~ | **RESOLVED**: kept in `<header>`/`<footer>` blocks (see spec §2.6) |
 
 > Rationale: these require specialized renderers (image decoding, OLE/Visio parsers, math
 > layout engines) and/or carry binary payloads. Converting them deterministically is
@@ -42,21 +42,25 @@ These are **out of scope** for v1.0.1. They are emitted as placeholders or dropp
 
 Removed on purpose to keep the semantic body clean. They do **not** appear in `words`.
 
-- **Paragraph presentation**: `w:pPr` borders (`w:pBdr`), shading (`w:shd`), tabs (`w:tabs`),
-  justification (`w:jc`), frame (`w:framePr`), `pageBreakBefore`, `keepNext`,
+- **Paragraph presentation**: shading (`w:shd`), tabs (`w:tabs`),
+  frame (`w:framePr`), `pageBreakBefore`, `keepNext`,
   `widowControl`, `outlineLvl`.
-- **Run presentation**: `w:rFonts`, `w:sz`, `w:color`, `w:spacing`, `w:highlight`,
+  Note: `w:jc` (justification) is **preserved** as `<s:align>` in `<style>` (LOSSLESS_METADATA).
+  Note: `w:pBdr` (borders) is **preserved** via compact `at` attribute on `<d:p>`/`<d:h>`.
+- **Run presentation**: `w:rPr/w:spacing`,
   `w:shadow`, `w:emboss`, `w:imprint`, `w:effect`, `w:border` (run), `w:shd` (run).
+  Note: `w:rFonts`, `w:sz`, `w:color`, `w:highlight` are **preserved** via `<span>` (see spec §3.2).
 - **Fields**: `w:fldSimple`, `w:fldChar`, `w:instrText` (TOC, PAGE, REF, …) and their
-  cached results — except HYPERLINK (resolved via `r:id` **or** `instrText`), kept as `<d:a>`.
-- **Anchors**: `w:bookmarkStart` / `w:bookmarkEnd`.
-- **Review**: `w:commentRange*`, `w:commentReference`, `w:proofError`.
-- **Track changes**: `w:ins`, `w:del`, `w:delText` (revision text removed).
+  cached results — except HYPERLINK (resolved via `r:id` **or** `instrText`), kept as `<a>`.
+- **Anchors**: `w:bookmarkStart` / `w:bookmarkEnd` — **preserved** in `<notes>` as `<bm id="name"/>`.
+- **Review**: `w:commentRange*`, `w:commentReference` — **preserved** in `<notes>` as `<comment>`.
+  `w:proofError` — dropped.
+- **Track changes (semantic mode)**: `w:ins`, `w:del`, `w:delText` — dropped in `mode="semantic"` (default); preserved as `<change>` in `mode="lossless"`.
 - **Wrappers**: `w:sdt`, `w:smartTag`, `w:customXml` — unwrapped to children.
 
 > These removals are intentional noise reduction, not defects.
 > Note: strikethrough (`w:strike`/`w:dstrike`), small/ALL caps, and RTL direction are
-> **preserved** (`<d:s>`, `<d:smallcaps>`, `<d:uppercase>`, `dir="rtl"`).
+> **preserved** (`<s>`, `<smallcaps>`, `<uppercase>`, `dir="rtl"`).
 
 ---
 
@@ -64,9 +68,9 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 
 | Construct | Handling | Lost detail |
 |-----------|----------|-------------|
-| **Table styling** (`w:tblPr`/`w:tcPr`) | borders/shading dropped; `w:tblGrid`/`w:gridCol` → `<s:col ref="n">` linked to `<d:table id="n">`; `colspan`/`rowspan` preserved | exact cell borders/colors lost |
+| **Table styling** (`w:tblPr`/`w:tcPr`) | borders preserved via `at` attribute; shading dropped; `w:tblGrid`/`w:gridCol` → `<s:col ref="n">` linked to `<d:table id="n">`; `colspan`/`rowspan` preserved | shading/color lost |
 | **Section layout** (`w:sectPr`) | page size + margins → `<s:page>`; **multiple sections** (`<s:page>` per section); headers/footers → `<header>`/`<footer>` | — |
-| **Vertical alignment** (`w:vertAlign`) | mapped to `<d:sup>`/`<d:sub>` | only sup/sub; other vertAlign values dropped |
+| **Vertical alignment** (`w:vertAlign`) | mapped to `<sup>`/`<sub>` | only sup/sub; other vertAlign values dropped |
 | **Multilingual** (`w:lang`) | propagated to `lang` attribute per element (BCP 47) | resolved in spec v1.0.1 |
 | **Code detection** (style/font heuristics) | pattern-matched to `<d:code>`; monospace font OR style name | false positives/negatives possible (custom styles named "Code" for non-code content) |
 
@@ -74,14 +78,14 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 
 ## 4. Formatting Constraints
 
-- **Units**: all layout values resolved to the declared `unit` (default `pt`); twips
+- **Units**: all layout values resolved to the declared `unit` (default `in`); twips
   converted. Inconsistent source units are normalized — original unit labels are not kept.
 - **Processing mode**: `mode="semantic"` (default) normalizes whitespace; `mode="lossless"` preserves more layout detail for round-tripping.
 - **Whitespace**: in `semantic` mode, repeated spaces collapsed, `w:tab` → single space,
-  `w:br`/`w:cr` → `<d:br/>`. Honors `xml:space="preserve"` when present on `<w:t>`.
+  `w:br`/`w:cr` → `<br/>`. Honors `xml:space="preserve"` when present on `<w:t>`.
   **Exception**: content inside `<d:code>` preserves original spacing verbatim in both modes.
 - **Text**: kept verbatim (no translation/summarization). Tracked-deletion text is wrapped
-  in `<d:change type="delete">` in `lossless` mode; dropped in `semantic` mode.
+  in `<change type="delete">` in `lossless` mode; dropped in `semantic` mode.
 - **XML escaping**: `&`, `<`, `>`, `"` are escaped per XML 1.0. Forbidden control characters
   (0x00–0x08, 0x0B–0x0C, 0x0E–0x1F, 0x7F–0x84) are stripped. No CDATA sections emitted.
 
@@ -100,9 +104,9 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 ## 6. Planned Follow-ups
 
 - Optionally preserve rendered field results (TOC/PAGE snapshot) instead of dropping.
-- Revisit image handling: pluggable extractor interface (OCR/Vision) feeding `<d:img>`.
+- Revisit image handling: pluggable extractor interface (OCR/Vision) feeding `<img>`.
 - Consider extracting textbox images via OCR (currently the textbox *text* is kept, the
-  embedded image is still `<d:img>`).
+  embedded image is still `<img>`).
 
 ### Resolved in v1.0.1
 
@@ -119,16 +123,21 @@ The following gaps were identified and addressed during specification review:
 | **Nested list structure unclear** | `<d:ul>`/`<d:ol>` placed inside parent `<d:li>`; arbitrary depth, mixed types allowed |
 | **Sentence fragmentation** from inline textbox anchors | Runs before/after textbox anchor merged into single `<d:p>`; textbox content emitted as sibling elements afterward |
 | **Malformed XML** from verbatim text & URLs | All text and attributes escaped per XML 1.0 (`&`, `<`, `>`, `"`); forbidden control chars (0x00–0x08, etc.) stripped |
-| **Namespace XML undefined** | `xmlns="urn:words:v1"` added to root `<words>`; `d:` and `s:` prefixes removed from grammar |
-| **DROP too aggressive** (justification, tracked changes) | `w:jc` → `<s:align>` in `<style>` (LOSSLESS_METADATA); `w:ins`/`w:del` → optional `<d:change>` |
+| **Namespace XML undefined** | Three namespaces declared: `xmlns="urn:words:v1"` (structural), `xmlns:d="urn:words:v1:doc"` (block content), `xmlns:s="urn:words:v1:style"` (layout); inline elements use no prefix |
+| **DROP too aggressive** (justification, tracked changes) | `w:jc` → `<s:align>` in `<style>` (LOSSLESS_METADATA); `w:ins`/`w:del` → optional `<change>` |
 | **Header/footer dropped** | Now KEPT in `<header>`/`<footer>` blocks per section, processed with normal transformation rules |
-| **Ambiguity marker vs body footnote** | Split: `<d:fn-ref id="n"/>` (marker) and `<d:fn id="n">` (body), `id` as connector |
+| **Ambiguity marker vs body footnote** | Split: `<fn-ref id="n" type="footnote|endnote"/>` (marker) and `<fn id="n" type="...">` (body), `id` as connector |
 | **vMerge restart/continue unresolved** | Grid reconstruction algorithm: restart → rowspan, continue → omit |
 | **Inaccurate list grouping** | Grouping considers `numId` + `ilvl` + `abstractNumId` + restart state |
 | **Whitespace normalization violates 1:1** | `mode="semantic"` (default) for AI; `mode="lossless"` for minimal transformation; `xml:space="preserve"` honored |
 | **Style inheritance not resolved** | Inheritance chain (`w:basedOn`) walked until finding known semantic style |
 | **Missing document metadata** | `<meta>` block added with title/author/created/modified/keywords from `docProps/core.xml` |
 | **Language preservation optional** | `lang` attribute (BCP 47) now REQUIRED on all block elements |
+| **Font/size/color/highlight dropped** | Now preserved via `<span font=".." size=".." color=".." highlight="..">` inline element |
+| **`<style>` optional** | Now REQUIRED with at minimum `<s:page>` (size + margins); default unit changed to `in` |
+| **Borders dropped** | Now preserved via compact `at` attribute on `<d:p>`, `<d:h>`, `<td>`, `<th>`, `<table>` |
+| **Bookmarks dropped** | Now preserved in `<notes>` as `<bm id="name"/>` |
+| **Comments dropped** | Now preserved in `<notes>` as `<comment id="n" author="..." date="...">text</comment>` |
 
 ---
 

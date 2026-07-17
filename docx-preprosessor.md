@@ -15,7 +15,10 @@ This specification defines the **DOCX Preprocessor**, which transforms raw Micro
 The preprocessor operates in one of two modes:
 
 - `mode="semantic"` (default): stripped-down representation for **AI training** and **downstream consumption**.
-- `mode="lossless"`: preserves additional metadata for **round‑tripping** or **document‑reconstruction**.
+- `mode="lossless"`: preserves additional metadata for **round‑tripping** or **document‑reconstruction**. Differences from semantic mode:
+  - Whitespace is NOT normalized (original spacing preserved).
+  - Tracked changes (`w:ins`/`w:del`) are emitted as `<change>` elements.
+  - All other transformation rules remain the same.
 
 ### 1.1 Problem (semantic mode)
 
@@ -47,7 +50,10 @@ Emit a flat, semantic, versioned XML (`words`) that is:
 A flat, semantic, versioned XML:
 
 ```xml
-<words xmlns="urn:words:v1" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+  <style unit="in">
+    <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
+  </style>
   <write>
     <d:h c="Heading1">Specifications for Data Center Racks</d:h>
   </write>
@@ -56,8 +62,14 @@ A flat, semantic, versioned XML:
 
 ### 2.1 Grammar (v1.0.1)
 
+**Namespace declarations**: The root `<words>` element MUST declare three namespaces:
+- `xmlns="urn:words:v1"` — default namespace for structural elements (`<meta>`, `<style>`, `<write>`, `<notes>`, `<header>`, `<footer>`)
+- `xmlns:d="urn:words:v1:doc"` — prefix for block-level document content elements (`<d:p>`, `<d:h>`, `<d:ul>`, `<d:ol>`, `<d:table>`, `<d:code>`, `<d:quote>`, `<d:tr>`, `<d:th>`, `<d:td>`, `<d:li>`)
+- `xmlns:s="urn:words:v1:style"` — prefix for style/layout elements (`<s:page>`, `<s:gap>`, etc.)
+- Inline elements (`<b>`, `<i>`, `<u>`, `<s>`, `<span>`, `<a>`, `<br>`, etc.) use **no prefix**
+
 ```text
-<words xmlns="urn:words:v1" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <meta>                         # optional document metadata (after root)
     <title>...</title>           # dc:title from docProps/core.xml
     <author>...</author>         # dc:creator
@@ -65,14 +77,14 @@ A flat, semantic, versioned XML:
     <modified>...</modified>     # dcterms:modified
     <keywords>...</keywords>     # cp:keywords
   </meta>
-  <style unit="pt">             # layout config (optional, before <write>)
+  <style unit="in">             # layout config (required, before <write>)
                                 # unit = default unit for all numeric layout values
     <s:page size="A4"           # named preset (A3/A4/A5/Letter/Legal/Tabloid/B5/
                                 #   A6/Executive/Statement/Folio); resolves w/h
             w=".." h=".."       # OR explicit page size (overrides size)
             mt=".." mb=".." ml=".." mr=".."   # margins (top/bottom/left/right)
             mh=".." mf=".."/>    # header / footer margins
-    # <s:page> MAY repeat once per document section (see MOD-6 / §2.2)
+    # <s:page> MAY repeat once per document section (see MOD-6 / §2.4)
     <s:gap el="d:h" c="Heading1" before=".." after=".."/>
     <s:gap el="d:p" before=".." after=".."/>
     <s:indent el="d:p"          # paragraph indentation (MOD-5)
@@ -94,19 +106,21 @@ A flat, semantic, versioned XML:
     <d:h c="Heading2" lang="..">...</d:h>
     <d:h c="Heading3" lang="..">...</d:h>
     <d:p lang="..">...</d:p>
+    <d:p at="bb 12 s1 #000000" lang="..">...</d:p>  # paragraph with border
     <d:quote lang="..">...</d:quote>
-    <d:b>...</d:b>              # bold (inline)
-    <d:i>...</d:i>              # italic (inline)
-    <d:u>...</d:u>              # underline (inline)
-    <d:s>...</d:s>              # strikethrough (inline) — CRIT-3
-    <d:smallcaps>...</d:smallcaps> # small caps (inline) — MOD-4
-    <d:uppercase>...</d:uppercase> # all caps (inline) — MOD-4
-    <d:sub>...</d:sub>          # subscript (inline)
-    <d:sup>...</d:sup>          # superscript (inline)
-    <d:a href="...">...</d:a>   # hyperlink (r:id or instrText HYPERLINK) — MOD-3
-    <d:br type="textWrapping|page|column|clear"/> # line break — MIN-1
-    <d:fn-ref id="n" type="footnote|endnote"/>  # marker with type attribute
-    <d:change type="insert|delete">...</d:change> # tracked change (optional, LOSSLESS_METADATA)
+    <b>...</b>              # bold (inline)
+    <i>...</i>              # italic (inline)
+    <u>...</u>              # underline (inline)
+    <s>...</s>              # strikethrough (inline) — CRIT-3
+    <smallcaps>...</smallcaps> # small caps (inline) — MOD-4
+    <uppercase>...</uppercase> # all caps (inline) — MOD-4
+    <sub>...</sub>          # subscript (inline)
+    <sup>...</sup>          # superscript (inline)
+    <span font=".." size=".." color=".." highlight="..">...</span>  # font/style span (inline)
+    <a href="...">...</a>   # hyperlink (r:id or instrText HYPERLINK) — MOD-3
+    <br type="textWrapping|page|column|clear"/> # line break — MIN-1
+    <fn-ref id="n" type="footnote|endnote"/>  # marker with type attribute
+    <change type="insert|delete">...</change> # tracked change (optional, LOSSLESS_METADATA)
     <d:ul type="bullet|...">    # unordered list (type from numFmt)
       <d:li>                    # list item; nesting via child <d:ul>/<d:ol>
         ...                     # text + inline elements
@@ -124,19 +138,35 @@ A flat, semantic, versioned XML:
       </d:li>
     </d:ol>
     <d:code>...</d:code>        # code / monospace block (whitespace preserved verbatim)
-    <d:table id="n">            # table; id = 1-based index, matches <s:col ref>
+    <d:table id="n" at="...">            # table; id = 1-based index, matches <s:col ref>; at = borders
       <d:tr><d:th colspan="n" rowspan="n" lang="..">..</d:th></d:tr>
-      <d:tr><d:td colspan="n" rowspan="n" lang="..">..</d:td></d:tr>
+      <d:tr><d:td colspan="n" rowspan="n" at="..." lang="..">..</d:td></d:tr>
     </d:table>
-    <d:img alt="..."/>         # PLACEHOLDER ONLY (images excluded — §3.0)
+    <img alt="..."/>         # PLACEHOLDER ONLY (images excluded — §3.0)
   </write>
-  <notes>                       # footnote/endnote bodies (after </write>)
-    <d:fn id="n">...</d:fn>     # footnote/endnote body; id matches <d:fn-ref id>
+  <notes>                         # footnote/endnote bodies, bookmarks, comments
+    <fn id="1" type="footnote">This is the footnote text for reference 1.</fn>
+    <bm id="bookmark1"/>        # bookmark position
+    <comment id="1" author="..." date="...">...</comment>
   </notes>
 </words>
 ```
 
-### 2.2 `<meta>` — Document Metadata Block
+### 2.2 Minimal Style Block
+
+The minimal required `<style>` block with page size A4 in inches:
+
+```xml
+<style unit="in">
+  <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
+</style>
+```
+
+**Unit conversions (pt → in):**
+- 54pt = 0.75in (standard 0.75 inch margins)
+- 36pt = 0.5in (standard 0.5 inch header/footer margins)
+
+### 2.3 `<meta>` — Document Metadata Block (optional)
 
 The `<meta>` element appears **once, immediately after the root `<words>` open tag and
 before `<style>`**. It carries document-level metadata extracted from `docProps/core.xml`
@@ -151,16 +181,17 @@ so provenance info is preserved for downstream filtering.
 All `<meta>` children are optional. If `docProps/core.xml` is absent or empty, the
 `<meta>` block is omitted entirely.
 
-### 2.3 `<style>` — Layout Block
+### 2.4 `<style>` — Layout Block (required)
 
-The `<style>` element appears **once, immediately after `<meta>` (or the root `<words>`
+The `<style>` element is **required** and appears **once, immediately after `<meta>` (or the root `<words>`
 open tag if `<meta>` is absent) and before `<write>`**. It carries presentation/layout
 metadata extracted from the source document so layout intent is preserved without
-polluting the semantic `<write>` body.
+polluting the semantic `<write>` body. At minimum, `<style>` MUST contain a `<s:page>` element
+with page size and margins.
 
 - `<s:page>` — page geometry (from `w:sectPr` / `pgSz` / `pgMar`):
-  - `size` — named preset; resolves `w`/`h` automatically. Allowed: `A3`, `A4`, `A5`,
-    `Letter`, `Legal`. If `w`/`h` are also given, they **override** the preset.
+  - `size` — named preset; resolves `w`/`h` automatically. Allowed: `A3`, `A4`, `A5`, `A6`,
+    `B5`, `Letter`, `Legal`, `Tabloid`, `Executive`, `Statement`, `Folio`. If `w`/`h` are also given, they **override** the preset.
   - `w`, `h` — page width/height (explicit; overrides `size`).
   - `mt`, `mb`, `ml`, `mr` — margins mapped from `w:pgMar` `@w:top` / `@w:bottom` /
     `@w:left` / `@w:right`.
@@ -207,10 +238,10 @@ polluting the semantic `<write>` body.
   > Resolution must use the declared `unit` (e.g., `unit="mm"` → A4 = `w="210" h="297"`).
   > Conversion: `pt ÷ 2.834645669` → `mm`; `pt ÷ 72` → `in`.
 
-### 2.3 Units
+### 2.5 Units
 
-All numeric layout values use the **`unit`** declared on `<style>` (default `pt`).
-Allowed units: `pt` (point), `px` (pixel), `cm`, `mm`, `in` (inch).
+All numeric layout values use the **`unit`** declared on `<style>` (default `in`).
+Allowed units: `in` (inch, default), `pt` (point), `px` (pixel), `cm`, `mm`.
 
 - A bare number (`mt="54"`) is interpreted in the declared `unit`.
 - A value may override the default inline by suffixing its own unit
@@ -218,16 +249,34 @@ Allowed units: `pt` (point), `px` (pixel), `cm`, `mm`, `in` (inch).
 - Word OOXML stores sizes in **twips** (`1pt = 20 twips`); the preprocessor MUST convert
   twips → the declared unit before emitting.
 - `<s:gap>` — spacing rules keyed by element (`el`) and optional style (`c`):
-  `before`/`after` gaps in pt. Lets downstream renderers reproduce vertical rhythm.
+  `before`/`after` gaps in the declared unit. Lets downstream renderers reproduce vertical rhythm.
 - `<s:col>` — column/grid widths (from `w:tblGrid` / `w:gridCol`). Each `<s:col>` carries a
   `ref="n"` attribute that matches the `<d:table id="n">` it belongs to (1-based document
   order). Tables without a `w:tblGrid` emit no `<s:col>`.
 - `<s:theme>` — optional color tokens (background/foreground) from theme part.
 
-The `<style>` block is **advisory**: the `<write>` body remains fully renderable without it.
-If absent, renderers fall back to sensible defaults.
+### `at` Attribute — Compact Border Representation
 
-### 2.4 `<header>` / `<footer>` — Header & Footer Content
+The `at` attribute provides a compact syntax for borders on block elements and table cells.
+Format: `at="[side] [width] [style][space] [color]; ..."` where:
+- `side`: `bt` (top), `bb` (bottom), `bl` (left), `br` (right)
+- `width`: border width in the declared unit
+- `style`: `s` (single), `d` (double), `ds` (dashed), `dt` (dotted), `n` (none)
+- `space`: spacing value (appended to style code, e.g., `s1` = single, space 1)
+- `color`: hex color (e.g., `#000000`)
+- Multiple borders separated by `;`
+
+Examples:
+```xml
+<d:p at="bb 12 s1 #000000"/>                     <!-- bottom border only -->
+<d:p at="bt 8 d2 #FF0000; bb 4 s1 #000000"/>     <!-- top double + bottom single -->
+<td at="bb 4 s1 #000000"/>                        <!-- cell bottom border -->
+<table at="bb 4 s1 #000000"/>                     <!-- table default border -->
+```
+
+The `<style>` block is **required**: it MUST appear in every `words` document with at minimum a `<s:page>` element specifying page size and margins. The `<write>` body depends on `<style>` for layout context.
+
+### 2.6 `<header>` / `<footer>` — Header & Footer Content
 
 Each `<header>` or `<footer>` element appears **after `<style>` and before `<write>`**,
 one per document section (matching `<s:page>` entries). They carry the text content
@@ -240,19 +289,22 @@ extracted from the corresponding `w:hdrReference`/`w:ftrReference` parts.
 - If a header/footer part is empty or missing, the corresponding element is omitted.
 - Headers/footers are **NOT** excluded — only their presentation chrome is dropped.
 
-### 2.5 `<notes>` — Footnote/Endnote Container
+### 2.7 `<notes>` — Notes Container
 
 The `<notes>` element appears **once, immediately after the closing `</write>` tag and
-before the root `</words>`**. It carries the full text bodies of footnotes and endnotes
-so they are not lost from the `words` representation.
+before the root `</words>`**. It carries footnote/endnote bodies, bookmarks, and comments.
 
-- `<d:fn id="n" type="footnote|endnote">` — body with matching type attribute
-  The marker in `<write>` is an empty element `<d:fn-ref id="n"/>`; the body lives here.
-- If the footnote/endnote has no text content, `<d:fn id="n" type="footnote|endnote"/>` is self-closing (marker-only).
+- `<fn id="n" type="footnote|endnote">` — body with matching type attribute
+  The marker in `<write>` is an empty element `<fn-ref id="n" type="footnote|endnote"/>`; the body lives here.
+- `<bm id="name"/>` — bookmark position marker (self-closing, `id` = bookmark name from `w:bookmarkStart/@w:name`).
+- `<comment id="n" author="..." date="...">text</comment>` — comment text with author and date metadata.
+  `id` is a 1-based index; `author` from `w:comment/@w:author`; `date` from `w:comment/@w:date` (ISO 8601).
+- If the footnote/endnote has no text content, `<fn id="n" type="footnote|endnote"/>` is self-closing (marker-only).
 - The text body is extracted from `word/footnotes.xml` or `word/endnotes.xml` in the `.docx`
   package, processed through the same paragraph/run transformation rules as the main body,
   but wrapped in the footnote container.
-- Footnotes and endnotes are placed in document order within a single `<notes>` block.
+- Bookmarks and comments are placed in document order within the `<notes>` block.
+- Footnotes, endnotes, bookmarks, and comments are all placed in document order within a single `<notes>` block.
 
 ---
 
@@ -266,8 +318,8 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 - **LOSSLESS_METADATA** — presentation/layout info that does not affect semantic meaning
   but is preserved as non-lossy metadata in `<style>` or as attributes (e.g., alignment,
   tracked changes). These are useful for round-tripping or AI tasks that care about layout.
-- **DROP** — presentation noise or renderer hints safely removed (e.g., borders, fonts,
-  justification to LLM).
+- **DROP** — presentation noise or renderer hints safely removed (e.g., shading, tabs,
+  page break before, frame properties).
 - **EXCLUDE** — out of scope / too complex / binary (e.g., images, OLE, Math).
 
 | DOCX element | Category | Action / Target | Rationale |
@@ -282,38 +334,45 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:bidi` (p), `w:rPr/w:rtl` (r), `w:dir`/`w:bdo` | direction | `dir="rtl"` attribute on element | RTL/bidi support (MOD-7) |
 | `w:pPr/w:outlineLvl` | style | DROP (inferred from heading) | redundant |
 | `w:pPr/w:suppressLineNumbers`,`w:keepNext`,`w:widowControl` | misc | DROP | renderer hints |
-| `w:pPr/w:pBdr`,`w:shd` | present | DROP | borders/shading |
+| `w:pPr/w:pBdr` | present | `at="bb ..."` on `<d:p>` | paragraph borders preserved compact |
+| `w:pPr/w:shd` | present | DROP | paragraph shading noise |
 | `w:pPr/w:tabs`,`w:pageBreakBefore`,`w:framePr` | misc | DROP | layout noise |
 | `w:r` | run | text content | — |
 | `w:t` | text | element text | — |
-| `w:rPr/w:b` | fmt | `<d:b>` | bold |
-| `w:rPr/w:i` | fmt | `<d:i>` | italic |
-| `w:rPr/w:u` | fmt | `<d:u>` | underline |
-| `w:rPr/w:strike`,`w:rPr/w:dstrike` | fmt | `<d:s>` | strikethrough (CRIT-3) |
-| `w:rPr/w:smallCaps` | fmt | `<d:smallcaps>` | small caps (MOD-4) |
-| `w:rPr/w:caps` | fmt | `<d:uppercase>` | all caps (MOD-4) |
-| `w:rPr/w:vertAlign` (sup/sub) | fmt | `<d:sup>`/`<d:sub>` | semantics |
-| `w:rPr/w:rFonts`,`w:sz`,`w:color`,`w:spacing`,`w:highlight` | present | DROP | font/color noise |
-| `w:br`,`w:cr` | break | `<d:br type="textWrapping|page|column|clear"/>` | explicit break w/ kind (MIN-1) |
+| `w:rPr/w:b` | fmt | `<b>` | bold |
+| `w:rPr/w:i` | fmt | `<i>` | italic |
+| `w:rPr/w:u` | fmt | `<u>` | underline |
+| `w:rPr/w:strike`,`w:rPr/w:dstrike` | fmt | `<s>` | strikethrough (CRIT-3) |
+| `w:rPr/w:smallCaps` | fmt | `<smallcaps>` | small caps (MOD-4) |
+| `w:rPr/w:caps` | fmt | `<uppercase>` | all caps (MOD-4) |
+| `w:rPr/w:vertAlign` (sup/sub) | fmt | `<sup>`/`<sub>` | semantics |
+| `w:rPr/w:rFonts` | fmt | `<span font="..">` | font family (KEEP) |
+| `w:rPr/w:sz` | fmt | `<span size="..">` | font size in pt (KEEP) |
+| `w:rPr/w:color` | fmt | `<span color="..">` | text color hex (KEEP) |
+| `w:rPr/w:highlight` | fmt | `<span highlight="..">` | highlight color (KEEP) |
+| `w:rPr/w:spacing` | present | DROP | character spacing noise |
+| `w:br`,`w:cr` | break | `<br type="textWrapping|page|column|clear"/>` | explicit break w/ kind (MIN-1) |
 | `w:tab` | break | normalize → single space | tab noise |
 | `w:noBreakHyphen`,`w:softHyphen`,`w:sym` | text | keep as char | literal |
-| `w:hyperlink` | link | `<d:a href>` (r:id or instrText HYPERLINK) | link (MOD-3) |
+| `w:hyperlink` | link | `<a href>` (r:id or instrText HYPERLINK) | link (MOD-3) |
 | `w:instrText` (field code) | field | DROP unless HYPERLINK | field codes are noise |
 | `w:fldSimple`,`w:fldChar` | field | DROP | TOC/PAGE/etc. noise |
-| `w:bookmarkStart/End` | anchor | DROP | anchors are noise |
-| `w:commentRange*`,`w:commentReference` | comment | DROP | review noise |
+| `w:bookmarkStart/End` | anchor | KEEP in `<notes>` as `<bm id="name"/>` | bookmark position preserved |
+| `w:commentRange*`,`w:commentReference` | comment | KEEP in `<notes>` as `<comment>` | comment text preserved |
 | `w:proofError` | proof | DROP | spelling/grammar noise |
-| `w:ins`,`w:del` (track changes) | change | `<d:change type="insert|delete">` (optional, LOSSLESS_METADATA) | revision tracking preserved for legal docs |
+| `w:ins`,`w:del` (track changes) | change | `<change type="insert|delete">` (optional, LOSSLESS_METADATA) | revision tracking preserved for legal docs |
 | `w:sdt`,`w:smartTag`,`w:customXml` | wrapper | unwrap children | tag wrappers |
 | `w:sectPr` | section | feed `<s:page>` in `<style>` | page layout |
 | `w:tbl` | struct | `<d:table>` | table |
 | `w:tblGrid`/`w:gridCol` | table layout | `<s:col ref="n">` widths (in `<style>`) | column widths linked by `ref` (MIN-3) |
-| `w:tblPr` (borders/shading) | present | DROP | table styling noise |
-| `w:tcPr` (shading/borders) | present | DROP | cell styling noise |
+| `w:tblPr` (borders) | present | `at="..."` on `<d:table>` | table borders preserved compact |
+| `w:tblPr` (shading) | present | DROP | table shading noise |
+| `w:tcPr` (borders) | present | `at="..."` on `<d:td>`/`<d:th>` | cell borders preserved compact |
+| `w:tcPr` (shading) | present | DROP | cell shading noise |
 | `w:tr`/`w:tc` | struct | `<d:tr>`/`<d:th>`/`<d:td>` | table cells |
 | `w:gridSpan`/`w:vMerge` | merge | `colspan`/`rowspan` on `<d:td>`/`<d:th>`; continue cells omitted | grid integrity preserved |
-| `w:footnoteReference`/`w:endnoteReference` | note | `<d:fn-ref id="n" type="...">` marker; `<d:fn id="n" type="...">` body in `<notes>` | note marker + body, type distinguishes footnote/endnote |
-| `w:drawing` (image blip) | **EXCLUDE** | `<d:img alt>` placeholder | images excluded |
+| `w:footnoteReference`/`w:endnoteReference` | note | `<fn-ref id="n" type="...">` marker; `<fn id="n" type="...">` body in `<notes>` | note marker + body, type distinguishes footnote/endnote |
+| `w:drawing` (image blip) | **EXCLUDE** | `<img alt>` placeholder | images excluded |
 | `w:pict` (VML) | **EXCLUDE** | DROP | legacy VML, no text extracted |
 | `w:txbxContent` (textbox body) | KEEP | unwrap paragraphs/runs/tables into `<write>` | textbox text extracted (CRIT-1) |
 | `w:hdrReference`,`w:ftrReference` | section | KEEP in `<header>`/`<footer>` blocks; margins via `<s:page mh/mf>` | header/footer content preserved |
@@ -326,9 +385,10 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 > and Office Math. These are either binary or require specialized renderers, so the
 > preprocessor emits a placeholder or drops them.
 > **Textboxes (`w:txbxContent`) are NOT excluded** — their text content is extracted into
-> `<write>` (CRIT-1). Images embedded *inside* a textbox are still excluded as `<d:img>`.
-> **Headers/footers content** is now KEPT — see §2.4. Only the presentation chrome
-> (borders, shading) around headers/footers is dropped.
+> `<write>` (CRIT-1). Images embedded *inside* a textbox are still excluded as `<img>`.
+> **Headers/footers content** is now KEPT — see §2.6. Only the presentation chrome
+> (shading) around headers/footers is dropped.
+> **Bookmarks and comments** are now KEPT in `<notes>` — see §2.7.
 
 ### 3.1 Paragraph → element mapping
 
@@ -353,9 +413,9 @@ Every OOXML construct the preprocessor encounters is classified into one of four
     `"Courier"`, case-insensitive).
   - The entire paragraph content (including all runs) becomes the text content of `<d:code>`,
     with original spacing preserved per §3.5.
-  - If a paragraph qualifies as `<d:code>`, all inline formatting tags (`<d:b>`, `<d:i>`,
+  - If a paragraph qualifies as `<d:code>`, all inline formatting tags (`<b>`, `<i>`,
     etc.) inside it are suppressed — only the raw text is kept.
-- Drop all `w:pPr` presentation attributes (`w14:paraId`, `w:rsidR`, spacing, indents, etc.).
+- Drop `w:pPr` presentation noise (`w14:paraId`, `w:rsidR`, shading, tabs, etc.); layout attributes (spacing, indent, alignment) are preserved in `<style>` per §3.0; borders preserved via `at` attribute.
 - The `c` attribute preserves the **original style name** for downstream semantic tagging.
 - **Style resolution**: if `w:pStyle w:val` is a custom name, resolve it via `styles.xml`
   (`w:styleId` → `w:name`) to a semantic role (Heading/Quote/etc.) when possible; otherwise
@@ -380,21 +440,26 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   2. Section default `w:lang` if paragraph-level is absent
   3. The first run's `w:rPr/w:rLang` as fallback
   If runs within the same paragraph have different languages, the first run's language
-  takes precedence. Inline language changes are lost due to the absence of a generic
-  `<d:span>` element for inline text with different language.
-- `w:rPr` with `w:b` → wrap run in `<d:b>`.
-- `w:rPr` with `w:i` → wrap run in `<d:i>`.
-- `w:rPr` with `w:u` → wrap run in `<d:u>`.
-- `w:rPr` with `w:strike`/`w:dstrike` → wrap run in `<d:s>` (CRIT-3).
-- `w:rPr` with `w:smallCaps` → wrap run in `<d:smallcaps>`; `w:caps` → `<d:uppercase>` (MOD-4).
-- `w:rPr` with `w:vertAlign w:val="superscript"` → `<d:sup>`; `"subscript"` → `<d:sub>`.
+  takes precedence. Inline language changes are lost (`<span>` supports font/size/color/highlight
+  but not `lang`).
+- `w:rPr` with `w:b` → wrap run in `<b>`.
+- `w:rPr` with `w:i` → wrap run in `<i>`.
+- `w:rPr` with `w:u` → wrap run in `<u>`.
+- `w:rPr` with `w:strike`/`w:dstrike` → wrap run in `<s>` (CRIT-3).
+- `w:rPr` with `w:smallCaps` → wrap run in `<smallcaps>`; `w:caps` → `<uppercase>` (MOD-4).
+- `w:rPr` with `w:vertAlign w:val="superscript"` → `<sup>`; `"subscript"` → `<sub>`.
+- `w:rPr` with `w:rFonts` → wrap run in `<span font="..">` (font family name from `@w:ascii` or `@w:hAnsi`).
+- `w:rPr` with `w:sz` → wrap run in `<span size="..">` (font size in half-points, converted to pt: `w:val ÷ 2`).
+- `w:rPr` with `w:color` → wrap run in `<span color="..">` (hex color from `@w:val`, e.g., `"FF0000"`).
+- `w:rPr` with `w:highlight` → wrap run in `<span highlight="..">` (highlight color name from `@w:val`).
+- Multiple font properties on the same run are combined into a single `<span>` element with all applicable attributes.
 - **Direction (MOD-7)**: paragraph `w:bidi`, run `w:rPr/w:rtl`, or inline `w:dir`/`w:bdo`
   → emit `dir="rtl"` on the affected element. Mixed LTR/RTL runs each carry their own `dir`.
 - Hyperlinks (MOD-3) — resolve target in this order:
-  1. `w:hyperlink/@r:id` → look up `document.xml.rels` → `<d:a href="...">`.
+  1. `w:hyperlink/@r:id` → look up `document.xml.rels` → `<a href="...">`.
   2. Else if `w:hyperlink` contains `w:instrText` with `HYPERLINK "..."` → extract the
-     URL from the field code → `<d:a href="...">`.
-  3. Internal/bookmark targets (no URL) → `<d:a href="#bookmarkName">` when resolvable.
+     URL from the field code → `<a href="...">`.
+  3. Internal/bookmark targets (no URL) → `<a href="#bookmarkName">` when resolvable.
 - **Textboxes (CRIT-1)**: `w:txbxContent` (inside `w:drawing` shapes or
   `mc:AlternateContent`) is unwrapped — its child paragraphs/runs/tables are processed by
   the normal rules. Only the *text* is kept; the shape/frame chrome is dropped.
@@ -405,12 +470,12 @@ Every OOXML construct the preprocessor encounters is classified into one of four
     This prevents sentence fragmentation while keeping document order intact.
   - If the textbox is the sole content of its host paragraph (no surrounding runs), its
     paragraphs replace the host `<d:p>` directly.
-- **Footnotes/endnotes**: `w:footnoteReference`/`w:endnoteReference` → `<d:fn-ref id="n" type="footnote|endnote"/>`
+- **Footnotes/endnotes**: `w:footnoteReference`/`w:endnoteReference` → `<fn-ref id="n" type="footnote|endnote"/>`
   marker in `<write>`. The body is extracted from `word/footnotes.xml` or `word/endnotes.xml`,
   processed through normal paragraph/run rules, and placed in the `<notes>` block as
-  `<d:fn id="n" type="footnote|endnote">...</d:fn>` (see §2.5).
-- **Tracked changes (LOSSLESS_METADATA)**: `w:ins` → `<d:change type="insert">...</d:change>`,
-  `w:del` → `<d:change type="delete">...</d:change>` (deleted text included for context).
+  `<fn id="n" type="footnote|endnote">...</fn>` (see §2.7).
+- **Tracked changes (LOSSLESS_METADATA)**: `w:ins` → `<change type="insert">...</change>`,
+  `w:del` → `<change type="delete">...</change>` (deleted text included for context).
   Only emitted when the preprocessor is in `mode="lossless"`; in `mode="semantic"` (default),
   they are dropped per §3.0.
 
@@ -481,12 +546,11 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   - This preserves grid integrity: downstream parsers can reconstruct the exact cell grid
     without needing to resolve merge states.
   - Nested tables handled recursively.
-- Nested tables handled recursively.
 - **Column widths (MIN-3)**: the authoritative source is `w:tblGrid` → `w:gridCol/@w:w`.
   Emit one `<s:col ref="n" w=".."/>` per `w:gridCol` into `<style>`, where `n` is the
   `<d:table id>` of the owning table. Per‑cell `w:tcW` is treated as a secondary override
   only when a `w:gridCol` is absent.
-- Drop `w:tblPr`/`w:tcPr` presentation props (borders, shading); `w:tblW` is informational.
+- Drop `w:tblPr`/`w:tcPr` shading; borders preserved via `at` attribute; `w:tblW` is informational.
 
 ### 3.5 Text cleanup
 
@@ -496,7 +560,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
     for round-tripping or legal/document-reconstruction scenarios.
 - **Whitespace normalization** (applies in `semantic` mode only):
   - Collapse repeated spaces to single space, trim line breaks inside a run.
-  - `w:tab` → single space; `w:br`/`w:cr` → `<d:br type="…"/>`.
+  - `w:tab` → single space; `w:br`/`w:cr` → `<br type="…"/>`.
   - **Exception**: content inside `<d:code>` blocks is exempt — all original spacing,
     indentation, and line breaks are preserved verbatim regardless of mode.
   - **`xml:space` preservation**: if a `<w:t>` element carries `xml:space="preserve"`,
@@ -504,7 +568,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   regardless of mode. This prevents data loss in poetry, code snippets, and
   ASCII diagrams where spacing is intentional.
 - `w:tab` → single space (except inside `<d:code>` where it remains literal tab, or
-  when `xml:space="preserve"`); `w:br`/`w:cr` → `<d:br type="…"/>` preserving `@w:type`
+  when `xml:space="preserve"`); `w:br`/`w:cr` → `<br type="…"/>` preserving `@w:type`
   (`textWrapping` default, `page`, `column`, `clear`) (MIN-1).
 - `dir="rtl"` attributes are preserved on the relevant elements (MOD-7).
 - Preserve intentional paragraph breaks as separate elements.
@@ -520,7 +584,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   in the ranges `0x00–0x08`, `0x0B–0x0C`, `0x0E–0x1F`, and `0x7F–0x84` (except
   `0x09` tab, `0x0A` LF, `0x0D` CR which are valid). These characters are illegal
   in XML 1.0 and would produce malformed output.
-- Drop all tracked-change, comment, proofing, bookmark, and field-code noise per §3.0.
+- Drop tracked-change, proofing, and field-code noise per §3.0. Bookmarks and comments are preserved in `<notes>` (see §2.7).
 
 ---
 
@@ -530,7 +594,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 
 ```xml
 <w:p w14:paraId="7A3B2" w:rsidR="007X">
-  <w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="000000"/></w:pBdr></w:pPr>
   <w:r><w:t>Specifications for Data Center Racks</w:t></w:r>
 </w:p>
 <w:p>
@@ -555,36 +619,40 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 <w:p>
   <w:pPr><w:pStyle w:val="Normal"/></w:pPr>
   <w:r><w:t>Note: </w:t></w:r>
-  <w:r><w:t>This is an inline drawing with a textbox (see output note below).</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="24"/><w:color w:val="FF0000"/></w:rPr><w:t>red text in Arial 12pt</w:t></w:r>
+  <w:r><w:t>. This is an inline drawing with a textbox (see output note below).</w:t></w:r>
 </w:p>
+<w:bookmarkStart w:id="0" w:name="Section1"/>
 <w:p>
   <w:pPr><w:pStyle w:val="Normal"/></w:pPr>
   <w:r><w:t>Textbox content extracted: Use C13 category bolt.</w:t></w:r>
 </w:p>
+<w:bookmarkEnd w:id="0"/>
 ```
 
 **Output (`words` v1.0.1):**
 
 ```xml
-<words xmlns="urn:words:v1" version="1.0.1" mode="semantic">
-  <style unit="pt">
-    <s:page size="A4" mt="54" mb="54" ml="54" mr="54" mh="36" mf="36"/>
-    <s:gap el="d:h" c="Heading1" before="16" after="8"/>
-    <s:gap el="d:p" before="0" after="8"/>
+<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+  <style unit="in">
+    <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
+    <s:gap el="d:h" c="Heading1" before="0.22" after="0.11"/>
+    <s:gap el="d:p" before="0" after="0.11"/>
   </style>
   <write>
-    <d:h c="Heading1">Specifications for Data Center Racks</d:h>
-    <d:p>Rack <d:b>42U</d:b> houses servers.<d:fn-ref id="1"/></d:p>
+    <d:h c="Heading1" at="bb 12 s1 #000000">Specifications for Data Center Racks</d:h>
+    <d:p>Rack <b>42U</b> houses servers.<fn-ref id="1" type="footnote"/></d:p>
     <d:ul type="bullet">
       <d:li>Rack mount standard</d:li>
       <d:li>Cold aisle containment</d:li>
     </d:ul>
-    <d:p><d:a href="https://example.com/guide">See official guide</d:a></d:p>
-    <d:p>Note: This is an inline drawing with a textbox (see output note below).</d:p>
+    <d:p><a href="https://example.com/guide">See official guide</a></d:p>
+    <d:p>Note: <span font="Arial" size="12" color="FF0000">red text in Arial 12pt</span>. This is an inline drawing with a textbox (see output note below).</d:p>
     <d:p>Textbox content extracted: Use C13 category bolt.</d:p>
   </write>
   <notes>
-    <d:fn id="1">This is the footnote text for reference 1.</d:fn>
+    <fn id="1" type="footnote">This is the footnote text for reference 1.</fn>
+    <bm id="Section1"/>
   </notes>
 </words>
 ```
@@ -615,14 +683,13 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 
 ## 7. Open Questions
 
-- Field results for TOC/PAGE are dropped; should we preserve the *rendered* text snapshot instead?
-- Should `mode="lossless"` preserve additional layout details (exact font names, paragraph borders)?
+None. All design decisions for v1.0.1 are finalized.
 
 ## 8. Explicitly Excluded (Policy)
 
 The following are **out of scope** for v1.0.1 and are emitted as placeholders or dropped.
 
-- **Images (non-textbox)** (`w:drawing` image blip, `w:pict` VML) → `<d:img alt="..."/>`
+- **Images (non-textbox)** (`w:drawing` image blip, `w:pict` VML) → `<img alt="..."/>`
   placeholder, no pixels extracted. Images *inside* a textbox are also excluded.
 - **Textboxes** are **NOT** excluded — `w:txbxContent` text is extracted (CRIT-1).
 - **OLE objects** (`w:object`) → dropped.

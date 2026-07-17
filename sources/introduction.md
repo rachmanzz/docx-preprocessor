@@ -17,13 +17,13 @@ This specification defines the **semantic transformation** from DOCX to `words` 
 
 - **Input**: Raw `.docx` (a zip archive containing `word/document.xml` and supporting parts)
 - **Output**: `words` XML - a flat, versioned, semantic representation
-- **Not in scope**: DOCX regeneration, layout preservation, pixel-perfect reproduction
+- **Not in scope**: DOCX regeneration, pixel-perfect reproduction. Only images and binary objects (OLE, charts, SmartArt, Math) are dropped. All text formatting (bold, italic, underline, font, size, color), borders, bookmarks, and comments are preserved in compact `words` syntax.
 
 ## Modes
 
 The preprocessor operates in one of two modes:
 
-- `mode="semantic"` (default): Stripped-down representation for AI training and downstream consumption. presentation attributes removed, whitespace normalized.
+- `mode="semantic"` (default): Stripped-down representation for AI training and downstream consumption. Presentation attributes removed, whitespace normalized.
 - `mode="lossless"`: Preserves additional metadata for round-tripping or document reconstruction. Layout details preserved, tracked changes maintained.
 
 ## Key Principles

@@ -54,6 +54,17 @@ Output MUST include:
 <?xml version="1.0" encoding="UTF-8"?>
 ```
 
+### Namespace Declarations
+
+The root `<words>` element MUST declare three namespaces:
+```xml
+<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+```
+
+- `xmlns="urn:words:v1"` — default namespace for structural elements
+- `xmlns:d="urn:words:v1:doc"` — prefix for block-level document content elements
+- `xmlns:s="urn:words:v1:style"` — prefix for style/layout elements
+
 ### Character Encoding
 
 Output MUST be UTF-8 encoded. All text normalized to UTF-8 regardless of source encoding.
@@ -69,11 +80,11 @@ Indentation MUST be exactly 2 spaces per level. XML attributes indented on new l
 ### Empty Element Syntax
 
 Empty elements MUST use self-closing syntax:
-- `<d:img alt="..."/>` ✓
-- `<d:br/>` ✓
-- `<d:fn-ref id="n"/>` ✓
+- `<img alt="..."/>` ✓
+- `<br/>` ✓
+- `<fn-ref id="n" type="footnote"/>` ✓
 
-NOT: `<d:img></d:img>` ✗
+NOT: `<img></img>` ✗
 
 ### Whitespace in Text Content
 
@@ -118,6 +129,7 @@ Test assertions MUST verify:
 5. Text content matches expected
 6. No unintended whitespace
 7. No XML escape issues
+8. `at` attribute border format valid
 
 ### Diff Tolerance
 
@@ -147,9 +159,12 @@ Implementations MUST:
 - [ ] Use self-closing syntax for empty elements
 - [ ] Normalize encoding to UTF-8
 - [ ] Respect `xml:space="preserve"`
-- [ ] Sort attributes in canonical order
+- [ ] Sort attributes in canonical order (including `at`)
 - [ ] Use pre-order traversal for table IDs
 - [ ] Produce idempotent output (same input → same output)
+- [ ] Convert border widths from twips to declared unit
+- [ ] Preserve bookmarks in `<notes>` as `<bm>`
+- [ ] Preserve comments in `<notes>` as `<comment>`
 
 ## Version Compatibility
 

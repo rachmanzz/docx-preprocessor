@@ -7,8 +7,8 @@ This document defines the transformation rules from DOCX OOXML to `words` XML.
 | Category | Description | Examples |
 |----------|-------------|----------|
 | **KEEP** | Mapped to semantic `words` elements | `w:p` → `<d:p>`, `w:r` → text content |
-| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<d:change>` |
-| **DROP** | Presentation noise safely removed | `w:pPr/w:spacing`, `w:rPr/w:rFonts`, `w:rPr/w:sz` |
+| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<change>` |
+| **DROP** | Presentation noise safely removed | `w:pPr/w:shd`, `w:rPr/w:spacing`, `w:pPr/w:tabs` |
 | **EXCLUDE** | Out of scope / too complex | `w:drawing` (images), `w:object` (OLE), `w:Math` |
 
 ## Paragraph Transformation
@@ -31,7 +31,7 @@ A paragraph maps to `<d:code>` when:
 2. First run uses monospace font (`Courier New`, `Consolas`, `Lucida Console`, `Menlo`, `Monaco`, `monospace`)
 
 When code block is detected:
-- All inline formatting (`<d:b>`, `<d:i>`, etc.) is suppressed
+- All inline formatting (`<b>`, `<i>`, etc.) is suppressed
 - Original whitespace preserved (see: §3.5 Text cleanup)
 
 ## Run Transformation
@@ -40,21 +40,25 @@ When code block is detected:
 
 | Source | Target |
 |--------|--------|
-| `w:rPr/w:b` | `<d:b>` |
-| `w:rPr/w:i` | `<d:i>` |
-| `w:rPr/w:u` | `<d:u>` |
-| `w:rPr/w:strike`/`dstrike` | `<d:s>` - CRIT-3 |
-| `w:rPr/w:smallCaps` | `<d:smallcaps>` - MOD-4 |
-| `w:rPr/w:caps` | `<d:uppercase>` - MOD-4 |
-| `w:rPr/w:vertAlign="superscript"` | `<d:sup>` |
-| `w:rPr/w:vertAlign="subscript"` | `<d:sub>` |
+| `w:rPr/w:b` | `<b>` |
+| `w:rPr/w:i` | `<i>` |
+| `w:rPr/w:u` | `<u>` |
+| `w:rPr/w:strike`/`dstrike` | `<s>` - CRIT-3 |
+| `w:rPr/w:smallCaps` | `<smallcaps>` - MOD-4 |
+| `w:rPr/w:caps` | `<uppercase>` - MOD-4 |
+| `w:rPr/w:vertAlign="superscript"` | `<sup>` |
+| `w:rPr/w:vertAlign="subscript"` | `<sub>` |
+| `w:rPr/w:rFonts` | `<span font="..">` (font family from `@w:ascii` or `@w:hAnsi`) |
+| `w:rPr/w:sz` | `<span size="..">` (font size in pt, `w:val ÷ 2`) |
+| `w:rPr/w:color` | `<span color="..">` (hex color from `@w:val`) |
+| `w:rPr/w:highlight` | `<span highlight="..">` (color name from `@w:val`) |
 
 ### Hyperlink Resolution
 
 Resolve target in order:
-1. `w:hyperlink/@r:id` → look up `document.xml.rels` → `<d:a href="...">`
-2. `w:hyperlink` with `w:instrText` containing `HYPERLINK "..."` → extract URL → `<d:a href="...">`
-3. Internal/bookmark targets → `<d:a href="#bookmarkName">`
+1. `w:hyperlink/@r:id` → look up `document.xml.rels` → `<a href="...">`
+2. `w:hyperlink` with `w:instrText` containing `HYPERLINK "..."` → extract URL → `<a href="...">`
+3. Internal/bookmark targets → `<a href="#bookmarkName">`
 
 ## List Transformation
 
@@ -122,8 +126,8 @@ Textboxes within `w:txbxContent` extracted and injected into `<write>` in docume
 
 ### Marker vs Body
 
-- `<d:fn-ref id="n" type="footnote|endnote"/>` in `<write>` - marker only (empty)
-- `<d:fn id="n" type="footnote|endnote">...</d:fn>` in `<notes>` - full body
+- `<fn-ref id="n" type="footnote|endnote"/>` in `<write>` - marker only (empty)
+- `<fn id="n" type="footnote|endnote">...</fn>` in `<notes>` - full body
 
 ### Type Distinction
 
@@ -161,4 +165,40 @@ Set `lang` on block elements based on precedence:
 2. Section default `w:lang` if paragraph-level absent
 3. First run's `w:rPr/w:rLang` as fallback
 
-If runs within same paragraph have different languages, first run's language takes precedence. Inline language changes lost (no `<d:span>` element).
+If runs within same paragraph have different languages, first run's language takes precedence. Inline language changes lost (`<span>` supports font/size/color/highlight but not `lang`).
+
+## Border Transformation
+
+Paragraph and table borders are preserved via the compact `at` attribute:
+- `w:pPr/w:pBdr` → `at="..."` on `<d:p>` or `<d:h>`
+- `w:tblPr/w:tblBorders` → `at="..."` on `<d:table>`
+- `w:tcPr/w:tcBorders` → `at="..."` on `<d:td>` or `<d:th>`
+
+Border format: `at="[side] [width] [style][space] [color]; ..."`
+- Sides: `bt` (top), `bb` (bottom), `bl` (left), `br` (right)
+- Styles: `s` (single), `d` (double), `ds` (dashed), `dt` (dotted), `n` (none)
+- Width in declared unit (default `in`), converted from twips
+- Color as hex with `#` prefix
+- Multiple borders separated by `;`
+
+## Bookmark Transformation
+
+- `w:bookmarkStart` → `<bm id="name"/>` in `<notes>` (self-closing)
+- `w:bookmarkEnd` → consumed (no output, paired with `bookmarkStart`)
+- `id` = `w:name` attribute from `w:bookmarkStart`
+
+## Comment Transformation
+
+- `w:commentRangeStart`/`w:commentRangeEnd` → mark comment span in text
+- `w:commentReference` → link to comment body
+- Comment body extracted from `word/comments.xml`
+- `<comment id="n" author="..." date="...">text</comment>` in `<notes>`
+- `id` = 1-based index; `author` from `w:comment/@w:author`; `date` from `w:comment/@w:date`
+
+## Shading (Dropped)
+
+Shading is intentionally dropped as presentation noise:
+- `w:pPr/w:shd` → DROP
+- `w:rPr/w:shd` → DROP
+- `w:tcPr/w:shd` → DROP
+- `w:tblPr/w:shd` → DROP
