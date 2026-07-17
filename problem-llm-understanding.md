@@ -18,10 +18,11 @@ billions of tokens of during training:
 | `<a href="...">` | `<a href="...">` | ✅ Identical |
 | `<br/>` | `<br/>` | ✅ Identical |
 | `<span font size color>` | `<span style="...">` | ✅ Same concept |
-| `<ul>`, `<ol>`, `<li>` | `<ul>`, `<ol>`, `<li>` | ✅ Identical (only `<d:ul>` vs `<ul>`) |
+| `<span lang hidden>` | — | ✅ New attributes (P2/P9) |
+| `<ul>`, `<ol>`, `<li>` | `<ul>`, `<ol>`, `<li>` | ✅ Identical (only `<ul>` vs `<ul>`) |
 | `<meta>`, `<title>`, `<author>` | `<meta>`, `<title>`, `<author>` | ✅ Identical |
-| `<d:p>`, `<d:h>` | `<p>`, `<h1>`-`<h6>` | ⚠️ Only `d:` prefix is new |
-| `<d:table>`, `<d:tr>`, `<d:td>` | `<table>`, `<tr>`, `<td>` | ⚠️ Only `d:` prefix is new |
+| `<p>`, `<h1>`-`<h9>` | `<p>`, `<h1>`-`<h6>` | ✅ Identical (levels 1-6 match HTML; 7-9 are extended) |
+| `<table>`, `<tr>`, `<td>` | `<table>`, `<tr>`, `<td>` | ✅ Identical |
 | `at="bb 12 s1 #000000"` | — | ❌ Completely new syntax |
 | `<s:page>`, `<s:gap>` | — | ⚠️ New layout metadata |
 | `<fn-ref>`, `<fn>`, `<bm>` | — | ⚠️ New notes system |
@@ -40,10 +41,10 @@ Already known (no learning needed):
   <span font="Arial">   ← HTML-like
 
 Must learn from spec:
-  <d:p>                 ← only d: prefix
-  <d:h c="Heading1">    ← only c attribute
+  <h1 c="Heading1">    ← c attribute for style name
   at="bb 12 s1 #000000" ← completely new
   <s:page size="A4"/>   ← new layout element
+  <s:line el="p" value="1.5"/> ← new line spacing (P1)
   <fn-ref id="1"/>      ← new notes element
 ```
 
@@ -56,8 +57,8 @@ Must learn from spec:
 | Mode | Score | Token Budget | Key Limitation |
 |---|---|---|---|
 | **Zero-shot** | **55-60/100** | N/A | `at` format, `<s:page>`, `<notes>` unknown |
-| **With skill** | **88-92/100** | ~9,760 tokens (spec) | 2 critical ambiguities in spec |
-| **Fine-tuning** | **95-97/100** | 50-100 training pairs | Edge cases (vMerge, style chain) |
+| **With skill** | **90-94/100** | ~9,760 tokens (spec) | 1 critical ambiguity remaining (`at` width unit) |
+| **Fine-tuning** | **96-98/100** | 50-100 training pairs | Edge cases (vMerge, style chain) |
 
 ### 2.2 Zero-shot Analysis (55-60/100)
 
@@ -65,23 +66,23 @@ Without the spec, an LLM given "convert DOCX to words XML" would produce:
 
 ```xml
 <!-- What LLM generates (likely) -->
-<d:p>Hello <b>world</b></d:p>              ← ✅ correct
-<d:h c="Heading1">Title</d:h>              ← ✅ correct
+<p>Hello <b>world</b></p>              ← ✅ correct
+<h1>Title</h1>              ← ✅ correct
 <a href="https://example.com">link</a>     ← ✅ correct
-<d:ul><d:li>item</d:li></d:ul>             ← ✅ correct
+<ul><li>item</li></ul>             ← ✅ correct
 ```
 
 **What goes wrong without spec:**
 
 | Issue | Impact | Example of Wrong Output |
 |---|---|---|
-| `at` border format unknown | High | `<d:p style="border-bottom: 12pt">` (HTML-like, wrong) |
+| `at` border format unknown | High | `<p style="border-bottom: 12pt">` (HTML-like, wrong) |
 | `<s:page>` structure unknown | High | `<style><page size="A4"/></style>` (wrong namespace) |
 | `<notes>` system unknown | Medium | `<footnote id="1">` (invented element) |
-| `c` attribute purpose unknown | Medium | `<d:h class="Heading1">` (HTML class, wrong) |
-| Attribute ordering unknown | Low | `<d:p lang="en" at="...">` (reversed order) |
+| `c` attribute purpose unknown | Medium | `<h class="Heading1">` (HTML class, wrong) |
+| Attribute ordering unknown | Low | `<p lang="en" at="...">` (reversed order) |
 
-### 2.3 With-skill Analysis (88-92/100)
+### 2.3 With-skill Analysis (90-94/100)
 
 With the full spec (698 lines, ~9,760 tokens) in system prompt:
 
@@ -89,15 +90,18 @@ With the full spec (698 lines, ~9,760 tokens) in system prompt:
 
 | Aspect | Score | Notes |
 |---|---|---|
-| Element generation | 95/100 | HTML-like elements trivial; `<d:` prefix easy to follow |
-| Attribute generation | 90/100 | `at` format clear in spec; canonical ordering documented |
-| Transformation rules | 85/100 | Style resolution (recursive), grid reconstruction (vMerge), list grouping (4-factor) complex |
-| Edge cases | 80/100 | Multi-section, nested tables, textbox anchors |
+| Element generation | 96/100 | HTML-like elements trivial; most match HTML exactly |
+| Attribute generation | 92/100 | `at` format clear in spec; canonical ordering documented; P1-P9 attributes added |
+| Transformation rules | 87/100 | Style resolution (recursive), grid reconstruction (vMerge), list grouping (4-factor) complex |
+| Edge cases | 82/100 | Multi-section, nested tables, textbox anchors |
 
-**Why not 95+?** Two critical ambiguities:
+**Why not 95+?** One critical ambiguity remaining:
 
 1. **`at` border width unit** — spec says "declared unit" but worked example uses raw `w:sz`. LLM doesn't know which to follow.
-2. **`lang` optionality** — 3 documents disagree (REQUIRED vs optional). LLM produces inconsistent output.
+
+**Resolved since last assessment:**
+- `lang` optionality — now REQUIRED on all block elements, `<span lang="...">` for inline (P2)
+- Noise matrix gaps — 6 run-level constructs now addressed (P1, P9)
 
 ### 2.4 Fine-tuning Analysis (95-97/100)
 
@@ -118,15 +122,14 @@ With 50-100 DOCX→words training pairs:
 | # | Problem | Location | Impact |
 |---|---|---|---|
 | **C1** | `at` border width unit contradiction | §2 `at` attribute vs §4 worked example | LLM produces wrong border widths |
-| **C2** | `lang` optionality contradiction | §3.2 vs §2.7 vs limitation doc | Inconsistent `lang` emission |
 
 ### 3.2 Significant (Score Impact)
 
 | # | Problem | Location | Impact |
 |---|---|---|---|
-| **S1** | 6 run-level DROP constructs missing from noise matrix | §3.0 | LLM doesn't know handling for `w:shd`, `w:shadow`, etc. |
+| **S1** | ~~6 run-level DROP constructs missing from noise matrix~~ | §3.0 | RESOLVED (P1, P9) |
 | **S2** | Phantom `title` attribute in canonical ordering | grammar.md | LLM may emit wrong attributes |
-| **S3** | `<d:li>` grammar gap (no `lang` attribute defined) | §2.1 | Incomplete element schema |
+| **S3** | `<li>` grammar gap (no `lang` attribute defined) | §2.1 | Incomplete element schema |
 | **S4** | Worked example covers only 35% of features | §4 | LLM lacks examples for tables, code, comments |
 | **S5** | No XSD/RelaxNG schema | §6 | No automated validation |
 
@@ -134,8 +137,8 @@ With 50-100 DOCX→words training pairs:
 
 | # | Problem | Location |
 |---|---|---|
-| M1 | `<td>`, `<th>`, `<table>` missing `d:` prefix in border examples | §2.1 |
-| M2 | `<d:ul>` type lists ordered-list values | grammar.md |
+| M1 | ~~`<td>`, `<th>`, `<table>` missing `d:` prefix in border examples~~ | RESOLVED (d: prefix removed) |
+| M2 | `<ul>` type lists ordered-list values | grammar.md |
 | M3 | `<br>` shown without self-closing `/>` | grammar.md |
 | M4 | `<header>`/`<footer>` shown as self-closing | target-format.md |
 | M5 | XML declaration required per determinism.md but absent from spec examples | §4 |
@@ -152,7 +155,8 @@ With 50-100 DOCX→words training pairs:
 | Fix S1: Missing noise matrix entries | +1 | +1 | +1 |
 | Fix S2: Remove phantom `title` | +0 | +1 | +0 |
 | Fix S4: Expand worked example | +2 | +2 | +1 |
-| **Total after all fixes** | **63-68/100** | **92-95/100** | **97-98/100** |
+| **Total after all fixes** | **63-68/100** | **93-96/100** | **97-98/100** |
+| **Current status (C2, S1 resolved)** | **58-63/100** | **90-94/100** | **96-98/100** |
 
 ---
 
@@ -161,14 +165,13 @@ With 50-100 DOCX→words training pairs:
 ### Phase 1: Fix Critical Issues (1-2 hours)
 
 1. Resolve `at` border width — decide: raw `w:sz` OR convert to declared unit
-2. Resolve `lang` optionality — mark as REQUIRED or optional consistently
-3. Add 6 missing constructs to noise matrix
+2. ~~Resolve `lang` optionality~~ — RESOLVED (REQUIRED on blocks, `<span lang="...">` on inline)
+3. ~~Add 6 missing constructs to noise matrix~~ — RESOLVED (P1, P9)
 
 ### Phase 2: Improve Score (2-4 hours)
 
 4. Remove phantom `title` attribute
-5. Fix border examples missing `d:` prefix
-6. Expand worked example (add table merge, code block, comment, meta)
+5. Expand worked example (add table merge, code block, comment, meta)
 
 ### Phase 3: Production Ready (1-2 days)
 

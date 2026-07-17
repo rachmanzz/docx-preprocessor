@@ -6,8 +6,8 @@ This document defines the transformation rules from DOCX OOXML to `words` XML.
 
 | Category | Description | Examples |
 |----------|-------------|----------|
-| **KEEP** | Mapped to semantic `words` elements | `w:p` → `<d:p>`, `w:r` → text content |
-| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<change>` |
+| **KEEP** | Mapped to semantic `words` elements | `w:p` → `<p>`, `w:r` → text content |
+| **LOSSLESS_METADATA** | Preserved as non-lossy metadata | `w:pPr/w:jc` → `<s:align>`, `w:ins`/`w:del` → `<ins>`/`<del>` |
 | **DROP** | Presentation noise safely removed | `w:pPr/w:shd`, `w:rPr/w:spacing`, `w:pPr/w:tabs` |
 | **EXCLUDE** | Out of scope / too complex | `w:drawing` (images), `w:object` (OLE), `w:Math` |
 
@@ -17,16 +17,22 @@ This document defines the transformation rules from DOCX OOXML to `words` XML.
 
 | Source Style | Target Element | Notes |
 |--------------|----------------|-------|
-| `Heading1`-`Heading9` | `<d:h>` | Level inferred from heading number |
-| `Title` | `<d:h>` | Title as heading level 0 |
-| `ListParagraph` + numPr | `<d:li>` | Inside `<d:ul>` or `<d:ol>` |
-| `Quote`/`IntenseQuote`/`BlockText` | `<d:quote>` | MIN-2 requirement |
-| `Normal` or none | `<d:p>` | Default paragraph |
-| Code-like styles | `<d:code>` | See: §3.1 Code Detection |
+| `Heading1`-`Heading9` | `<h1>`-`<h9>` | Level inferred from heading number |
+| `Title` | `<h1>` | Title as heading level 0 |
+| `ListParagraph` + numPr | `<li>` | Inside `<ul>` or `<ol>` |
+| `Quote`/`IntenseQuote`/`BlockText` | `<blockquote>` | MIN-2 requirement |
+| `Normal` or none | `<p>` | Default paragraph |
+| Code-like styles | `<pre>` | See: §3.1 Code Detection |
+
+### Vertical Text Alignment
+
+- `w:pPr/w:textAlignment` → `<p valign="...">` — P8
+- Values: `top`, `center`, `baseline` (maps from OOXML `top`, `center`, `auto`)
+- Emitted only when non-default (`auto`/baseline is default, omitted)
 
 ### Code Block Detection
 
-A paragraph maps to `<d:code>` when:
+A paragraph maps to `<pre>` when:
 1. Style name contains `"Code"`, `"Source"`, or `"Output"` as a word, OR
 2. First run uses monospace font (`Courier New`, `Consolas`, `Lucida Console`, `Menlo`, `Monaco`, `monospace`)
 
@@ -52,6 +58,13 @@ When code block is detected:
 | `w:rPr/w:sz` | `<span size="..">` (font size in pt, `w:val ÷ 2`) |
 | `w:rPr/w:color` | `<span color="..">` (hex color from `@w:val`) |
 | `w:rPr/w:highlight` | `<span highlight="..">` (color name from `@w:val`) |
+| `w:rPr/w:lang` | `<span lang="..">` (BCP 47 from `@w:val`) — P2 |
+| `w:rPr/w:vanish` | `<span hidden="true">` — P9 |
+| `w:rPr/w:rFonts/@w:eastAsia` | `<span fontEA="..">` (East Asian font from `@w:eastAsia`) — P14 |
+| `w:rPr/w:rFonts/@w:cs` | `<span fontCS="..">` (Complex Script font from `@w:cs`) — P15 |
+| `w:rPr/w:bCs` | `<bcs>...</bcs>` — P16 |
+| `w:rPr/w:iCs` | `<ics>...</ics>` — P17 |
+| `w:rPr/w:szCs` | `<span sizeCS="..">` (Complex Script font size in pt, `w:val ÷ 2`) — P18 |
 
 ### Hyperlink Resolution
 
@@ -75,18 +88,18 @@ Consecutive `ListParagraph` paragraphs with same `w:numId` form one list. Groupi
 
 Detect `w:lvlOverride` in `numbering.xml`:
 - When `w:lvlOverride/w:startOverride/@w:val` resets numbering
-- Split list into new `<d:ol>` with `start="n"` attribute
+- Split list into new `<ol>` with `start="n"` attribute
 - Default `start="1"` if not specified
 
 ### List Types
 
 | numFmt | Target Type |
 |--------|-------------|
-| `bullet` | `<d:ul type="bullet">` |
-| `decimal` | `<d:ol type="decimal">` |
-| `lowerLetter`/`upperLetter` | `<d:ol type="lowerLetter|upperLetter">` |
-| `lowerRoman`/`upperRoman` | `<d:ol type="lowerRoman|upperRoman">` |
-| Any other | `<d:ol type="...">` - preserve raw value (MOD-2) |
+| `bullet` | `<ul type="bullet">` |
+| `decimal` | `<ol type="decimal">` |
+| `lowerLetter`/`upperLetter` | `<ol type="lowerLetter|upperLetter">` |
+| `lowerRoman`/`upperRoman` | `<ol type="lowerRoman|upperRoman">` |
+| Any other | `<ol type="...">` - preserve raw value (MOD-2) |
 
 ## Table Transformation
 
@@ -105,16 +118,28 @@ Vertical merge (`w:vMerge`) requires grid reconstruction:
 Tables receive 1-based IDs in **pre-order traversal**:
 - Parent table ID assigned before child tables
 - Nested tables receive IDs sequentially
-- `<s:col ref="n">` matches `<d:table id="n">`
+- `<s:col ref="n">` matches `<table id="n">`
+
+### Table Properties
+
+- `w:tblPr/w:tblW` → `<table width="...">` — P5 (converted to declared unit)
+- `w:tblPr/w:jc` → `<table align="...">` — P6 (left|center|right)
+- `w:tblPr/w:tblInd` → `<table indent="...">` — P10 (converted to declared unit)
+- `w:tblPr/w:tblCellSpacing` → `<table cellSpacing="...">` — P11 (converted to declared unit)
+- `w:tblPr/w:tblCaption` → `<table caption="...">` — P3
+- `w:tblPr/w:tblDescription` → `<table summary="...">` — P4
+- `w:tcPr/w:vAlign` → `<td valign="...">` / `<th valign="...">` — P7 (top|center|bottom)
+- `w:tcPr/w:textDirection` → `<td textDir="...">` / `<th textDir="...">` — P12 (bttRtl|tbRl|tbRlV|rtLmV|ltRtV)
+- `w:tcPr/w:noWrap` → `<td noWrap="true">` / `<th noWrap="true">` — P13
 
 ## Textbox Transformation
 
 ### Inline Anchor Handling
 
 When textbox anchored inside `<w:r>`:
-1. Host paragraph runs before/after anchor merged into single `<d:p>`
+1. Host paragraph runs before/after anchor merged into single `<p>`
 2. Textbox content NOT spliced mid-sentence
-3. Textbox paragraphs emitted as sibling elements after host `<d:p>`
+3. Textbox paragraphs emitted as sibling elements after host `<p>`
 
 This prevents sentence fragmentation.
 
@@ -165,14 +190,22 @@ Set `lang` on block elements based on precedence:
 2. Section default `w:lang` if paragraph-level absent
 3. First run's `w:rPr/w:rLang` as fallback
 
-If runs within same paragraph have different languages, first run's language takes precedence. Inline language changes lost (`<span>` supports font/size/color/highlight but not `lang`).
+If runs within same paragraph have different languages, first run's language takes precedence. Inline language changes now captured via `<span lang="...">` (P2).
+
+## Line Spacing (LOSSLESS_METADATA)
+
+- `w:pPr/w:spacing/@w:line` → `<s:line>` — P1
+- `w:pPr/w:spacing/@w:lineRule` → `rule` attribute on `<s:line>`
+- Values: `auto` (line height multiplier), `exact` (fixed), `atLeast` (minimum)
+- `<s:line>` keyed by `el` + optional `c` (style name)
+- Only emitted when line spacing is non-default (single-spaced is default)
 
 ## Border Transformation
 
 Paragraph and table borders are preserved via the compact `at` attribute:
-- `w:pPr/w:pBdr` → `at="..."` on `<d:p>` or `<d:h>`
-- `w:tblPr/w:tblBorders` → `at="..."` on `<d:table>`
-- `w:tcPr/w:tcBorders` → `at="..."` on `<d:td>` or `<d:th>`
+- `w:pPr/w:pBdr` → `at="..."` on `<p>` or `<h1>`-`<h9>`
+- `w:tblPr/w:tblBorders` → `at="..."` on `<table>`
+- `w:tcPr/w:tcBorders` → `at="..."` on `<td>` or `<th>`
 
 Border format: `at="[side] [width] [style][space] [color]; ..."`
 - Sides: `bt` (top), `bb` (bottom), `bl` (left), `br` (right)
@@ -180,6 +213,13 @@ Border format: `at="[side] [width] [style][space] [color]; ..."`
 - Width in declared unit (default `in`), converted from twips
 - Color as hex with `#` prefix
 - Multiple borders separated by `;`
+
+## Section Properties
+
+- `w:sectPr/w:cols` → `<s:cols n=".." space=".."/>` in `<style>` — P19 (multi-column layout)
+- `w:sectPr/w:cols/@w:num` → `n` attribute (number of columns)
+- `w:sectPr/w:cols/@w:space` → `space` attribute (column spacing, converted to declared unit)
+- Only emitted when column count > 1
 
 ## Bookmark Transformation
 

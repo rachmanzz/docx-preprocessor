@@ -56,13 +56,12 @@ Output MUST include:
 
 ### Namespace Declarations
 
-The root `<words>` element MUST declare three namespaces:
+The root `<words>` element MUST declare two namespaces:
 ```xml
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
 ```
 
-- `xmlns="urn:words:v1"` — default namespace for structural elements
-- `xmlns:d="urn:words:v1:doc"` — prefix for block-level document content elements
+- `xmlns="urn:words:v1"` — default namespace for all elements
 - `xmlns:s="urn:words:v1:style"` — prefix for style/layout elements
 
 ### Character Encoding

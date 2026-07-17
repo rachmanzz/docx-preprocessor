@@ -7,17 +7,16 @@ This document defines the complete `words` XML grammar for the DOCX Preprocessor
 ```xml
 <words 
   xmlns="urn:words:v1"
-  xmlns:d="urn:words:v1:doc"
   xmlns:s="urn:words:v1:style"
   version="1.0.1" 
   mode="semantic">
 ```
 
 ### Attributes
-- `xmlns="urn:words:v1"` - default namespace for structural elements (REQUIRED)
-- `xmlns:d="urn:words:v1:doc"` - namespace for block-level document content elements (REQUIRED)
+- `xmlns="urn:words:v1"` - default namespace for all elements (REQUIRED)
 - `xmlns:s="urn:words:v1:style"` - namespace for style/layout elements (REQUIRED)
 - Inline elements (`<b>`, `<i>`, `<u>`, `<s>`, `<span>`, `<a>`, `<br>`, etc.) use **no prefix**
+- Block elements (`<p>`, `<h1>`-`<h9>`, `<ul>`, `<ol>`, `<table>`, etc.) also use **no prefix**
 - `version="1.0.1"` - format version (REQUIRED)
 - `mode="semantic|lossless"` - processing mode (REQUIRED)
 
@@ -38,68 +37,76 @@ This document defines the complete `words` XML grammar for the DOCX Preprocessor
 
 ## Block Elements
 
-### `<d:h>` - Heading
+### `<h1>`-`<h9>` - Headings
 ```xml
-<d:h c="Heading1" lang="en">...</d:h>
-<d:h c="Heading1" at="bb 12 s1 #000000" lang="en">...</d:h>
+<h1 lang="en">...</h1>
+<h1 at="bb 12 s1 #000000" lang="en">...</h1>
 ```
 Attributes:
 - `c="..."` - original style name (REQUIRED)
 - `at="..."` - compact border representation (see Border Attribute section)
 - `lang="..."` - BCP 47 language tag
 
-### `<d:p>` - Paragraph
+### `<p>` - Paragraph
 ```xml
-<d:p lang="en">...</d:p>
-<d:p at="bb 12 s1 #000000" lang="en">...</d:p>
+<p lang="en">...</p>
+<p at="bb 12 s1 #000000" lang="en">...</p>
+<p lang="en" valign="top">...</p>
 ```
 Attributes:
 - `at="..."` - compact border representation (see Border Attribute section)
 - `lang="..."` - BCP 47 language tag
+- `valign="top|center|baseline"` - vertical text alignment
 
-### `<d:quote>` - Blockquote
+### `<blockquote>` - Blockquote
 ```xml
-<d:quote lang="en">...</d:quote>
+<blockquote lang="en">...</blockquote>
 ```
 Attributes:
 - `lang="..."` - BCP 47 language tag
 
-### `<d:code>` - Code Block
+### `<pre>` - Code Block
 ```xml
-<d:code>...</d:code>
+<pre>...</pre>
 ```
 Whitespace preserved verbatim (see: §3.5 Text cleanup)
 
-### `<d:ul>` - Unordered List
+### `<ul>` - Unordered List
 ```xml
-<d:ul type="bullet">
-  <d:li>...</d:li>
-</d:ul>
+<ul type="bullet">
+  <li>...</li>
+</ul>
 ```
 Attributes:
 - `type="bullet|lowerRoman|upperRoman|..."` - list style
 
-### `<d:ol>` - Ordered List
+### `<ol>` - Ordered List
 ```xml
-<d:ol type="decimal" start="1">
-  <d:li>...</d:li>
-</d:ol>
+<ol type="decimal" start="1">
+  <li>...</li>
+</ol>
 ```
 Attributes:
 - `type="decimal|lowerLetter|upperLetter|..."` - list style
 - `start="n"` - numbering restart value (optional)
 
-### `<d:table>` - Table
+### `<table>` - Table
 ```xml
-<d:table id="1" at="bb 4 s1 #000000">
-  <d:tr><d:th colspan="2" lang="en">...</d:th></d:tr>
-  <d:tr><d:td lang="en" at="bb 4 s1 #000000">...</d:td></d:tr>
-</d:table>
+<table id="1" at="bb 4 s1 #000000" width="8" align="center" indent="0.5" cellSpacing="0.1" caption="Table 1" summary="Data summary">
+  <tr><th colspan="2" lang="en" valign="top" textDir="ltr" noWrap="true">...</th></tr>
+  <tr><td lang="en" at="bb 4 s1 #000000" valign="center" textDir="ltr" noWrap="true">...</td></tr>
+</table>
 ```
 Attributes:
 - `id="n"` - 1-based table index (REQUIRED)
 - `at="..."` - compact border representation (see Border Attribute section)
-- Child elements: `<d:tr>` containing `<d:th>` or `<d:td>` (both support `at`)
+- `width="..."` - table width (in declared unit)
+- `align="left|center|right"` - table alignment
+- `indent="..."` - table indentation (in declared unit) — P10
+- `cellSpacing="..."` - cell spacing (in declared unit) — P11
+- `caption="..."` - accessibility caption
+- `summary="..."` - accessibility description
+- Child elements: `<tr>` containing `<th>` or `<td>` (both support `at`, `valign`, `textDir`, `noWrap`)
 
 ## Inline Elements (no prefix)
 
@@ -112,30 +119,37 @@ Attributes:
 - `<uppercase>` - all caps
 - `<sub>` - subscript
 - `<sup>` - superscript
+- `<bcs>` - Complex Script bold — P16
+- `<ics>` - Complex Script italic — P17
 
 ### Font/Style Span
 ```xml
-<span font="DejaVu Sans" size="12" color="FF0000" highlight="yellow">...</span>
+<span font="DejaVu Sans" size="12" color="FF0000" highlight="yellow" lang="en" hidden="true" fontEA="MS Mincho" fontCS="Arial" sizeCS="11">...</span>
 ```
 Attributes (all optional, at least one required):
 - `font="..."` - font family name
 - `size="..."` - font size in pt
 - `color="..."` - text color (hex)
 - `highlight="..."` - highlight color name
+- `lang="..."` - BCP 47 language tag (run-level)
+- `hidden="true"` - hidden text
+- `fontEA="..."` - East Asian font family — P14
+- `fontCS="..."` - Complex Script font family — P15
+- `sizeCS="..."` - Complex Script font size in pt — P18
 
 ### Special
 - `<a href="...">` - hyperlink
 - `<br type="textWrapping|page|column|clear">` - line break
 - `<fn-ref id="n" type="footnote|endnote"/>` - footnote marker (self-closing)
-- `<change type="insert|delete">...</change>` - tracked change
+- `<ins>...</ins>` / `<del>...</del>` - tracked change
 
 ## Layout Elements
 
 ### Border Attribute (`at`)
-Compact syntax for borders on `<d:p>`, `<d:h>`, `<td>`, `<th>`, `<table>`:
+Compact syntax for borders on `<p>`, `<h1>`-`<h9>`, `<td>`, `<th>`, `<table>`:
 ```xml
-<d:p at="bb 12 s1 #000000"/>
-<d:p at="bt 8 d2 #FF0000; bb 4 s1 #000000"/>
+<p at="bb 12 s1 #000000"/>
+<p at="bt 8 d2 #FF0000; bb 4 s1 #000000"/>
 ```
 Format: `at="[side] [width] [style][space] [color]; ..."`
 - Sides: `bt` (top), `bb` (bottom), `bl` (left), `br` (right)
@@ -159,18 +173,27 @@ Format: `at="[side] [width] [style][space] [color]; ..."`
 ```xml
 <style unit="in">
   <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
-  <s:gap el="d:p" before="0" after="0.11"/>
-  <s:indent el="d:p" left="0" right="0" firstLine="0" hanging="0"/>
-  <s:align el="d:p" value="left|center|right|both"/>
+  <s:gap el="p" before="0" after="0.11"/>
+  <s:indent el="p" left="0" right="0" firstLine="0" hanging="0"/>
+  <s:align el="p" value="left|center|right|both"/>
+  <s:cols n="2" space="0.5"/>
   <s:col ref="1" w="1.39"/>
   <s:theme bg="FFFFFF" fg="000000"/>
 </style>
 ```
 
+### `<s:cols>` - Multi-Column Layout
+```xml
+<s:cols n="2" space="0.5"/>
+```
+Attributes:
+- `n="n"` - number of columns — P19
+- `space="..."` - column spacing (in declared unit) — P19
+
 ### `<header id="n">` / `<footer id="n">` - Header/Footer
 ```xml
 <header id="1">
-  <d:p>...</d:p>
+  <p>...</p>
 </header>
 ```
 

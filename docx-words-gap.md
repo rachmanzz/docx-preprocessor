@@ -58,9 +58,9 @@ The 561-token overhead (vs plain text) preserves:
 |---|---|---|
 | `<b>`, `<i>`, `<u>` tags | ~120 | ✅ Semantic emphasis |
 | `<span font size color>` | ~180 | ✅ Visual hierarchy |
-| `<d:h c="Heading1">` | ~80 | ✅ Document structure |
-| `<d:ul>`, `<d:ol>`, `<d:li>` | ~60 | ✅ List semantics |
-| `<d:table>`, `<d:tr>`, `<d:td>` | ~100 | ✅ Tabular data |
+| `<h1>` | ~80 | ✅ Document structure |
+| `<ul>`, `<ol>`, `<li>` | ~60 | ✅ List semantics |
+| `<table>`, `<tr>`, `<td>` | ~100 | ✅ Tabular data |
 | `<a href>` | ~30 | ✅ Hyperlinks |
 | `<s:page>`, `<s:gap>` | ~50 | ✅ Layout context |
 | `<notes>` (footnotes, bookmarks) | ~40 | ✅ Reference integrity |
@@ -74,8 +74,8 @@ The 561-token overhead (vs plain text) preserves:
 
 | DOCX Feature | Words Representation | Fidelity |
 |---|---|---|
-| Paragraphs | `<d:p>` | ✅ 100% |
-| Headings (H1-H9) | `<d:h c="...">` | ✅ 100% |
+| Paragraphs | `<p>` | ✅ 100% |
+| Headings (H1-H9) | `<h1>` through `<h9>` | ✅ 100% |
 | Bold | `<b>` | ✅ 100% |
 | Italic | `<i>` | ✅ 100% |
 | Underline | `<u>` | ✅ 100% |
@@ -88,11 +88,11 @@ The 561-token overhead (vs plain text) preserves:
 | Text color | `<span color="...">` | ✅ 100% |
 | Highlight | `<span highlight="...">` | ✅ 100% |
 | Hyperlinks | `<a href="...">` | ✅ 100% |
-| Ordered lists | `<d:ol>` | ✅ 100% |
-| Unordered lists | `<d:ul>` | ✅ 100% |
-| Nested lists | `<d:li>` children | ✅ 100% |
-| Tables | `<d:table>` | ✅ 100% |
-| Table header rows | `<d:th>` | ✅ 100% |
+| Ordered lists | `<ol>` | ✅ 100% |
+| Unordered lists | `<ul>` | ✅ 100% |
+| Nested lists | `<li>` children | ✅ 100% |
+| Tables | `<table>` | ✅ 100% |
+| Table header rows | `<th>` | ✅ 100% |
 | Horizontal merge | `colspan` | ✅ 100% |
 | Vertical merge | `rowspan` | ✅ 100% |
 | Column widths | `<s:col>` | ✅ 100% |
@@ -112,12 +112,26 @@ The 561-token overhead (vs plain text) preserves:
 | Headers/Footers | `<header>`, `<footer>` | ✅ 100% |
 | RTL/Bidi | `dir="rtl"` | ✅ 100% |
 | Language | `lang="..."` | ✅ 100% |
-| Code blocks | `<d:code>` | ✅ 100% |
-| Blockquotes | `<d:quote>` | ✅ 100% |
+| Run language | `<span lang="...">` | ✅ 100% |
+| Hidden text | `<span hidden="true">` | ✅ 100% |
+| Code blocks | `<pre>` | ✅ 100% |
+| Blockquotes | `<blockquote>` | ✅ 100% |
 | Line breaks | `<br>` | ✅ 100% |
 | Page breaks | `<br type="page"/>` | ✅ 100% |
-| Tracked changes | `<change>` (lossless) | ✅ 100% |
+| Tracked changes | `<ins>`/`<del>` (lossless) | ✅ 100% |
 | Document metadata | `<meta>` | ✅ 100% |
+| Line spacing | `<s:line>` | ✅ 100% |
+| Text vertical alignment | `<p valign="...">` | ✅ 100% |
+| Table width | `<table width="...">` | ✅ 100% |
+| Table alignment | `<table align="...">` | ✅ 100% |
+| Table caption | `<table caption="...">` | ✅ 100% |
+| Table summary | `<table summary="...">` | ✅ 100% |
+| Cell vertical alignment | `<td valign="...">` / `<th valign="...">` | ✅ 100% |
+| Table indentation | `<table indent="...">` | ✅ 100% |
+| Cell spacing | `<table cellSpacing="...">` | ✅ 100% |
+| Text direction in cell | `<td textDir="...">` / `<th textDir="...">` | ✅ 100% |
+| No-wrap flag | `<td noWrap="true">` / `<th noWrap="true">` | ✅ 100% |
+| Multi-column layout | `<s:cols n=".." space=".."/>` | ✅ 100% |
 
 ### 2.2 What is Reduced (Compact)
 
@@ -183,14 +197,14 @@ DOCX Original (Word):
 └─────────────────────────────────┘
 
 Words XML (processed):
-<d:h c="Heading1" at="bb 12 s1 #000000">Specifications for Data Center Racks</d:h>
-<d:p>Rack <b>42U</b> houses servers.<fn-ref id="1" type="footnote"/></d:p>
-<d:ul type="bullet">
-  <d:li>Rack mount standard</d:li>
-  <d:li>Cold aisle containment</d:li>
-</d:ul>
-<d:p><a href="...">See official guide</a></d:p>
-<d:p>Note: <span font="Arial" size="12" color="FF0000">red text in Arial 12pt</span>.</d:p>
+<h1 at="bb 12 s1 #000000">Specifications for Data Center Racks</h1>
+<p>Rack <b>42U</b> houses servers.<fn-ref id="1" type="footnote"/></p>
+<ul type="bullet">
+  <li>Rack mount standard</li>
+  <li>Cold aisle containment</li>
+</ul>
+<p><a href="...">See official guide</a></p>
+<p>Note: <span font="Arial" size="12" color="FF0000">red text in Arial 12pt</span>.</p>
 
 Plain Text:
 Specifications for Data Center Racks
@@ -206,7 +220,7 @@ Note: red text in Arial 12pt
 | Format | What LLM Gets | Semantic Understanding |
 |---|---|---|
 | Raw OOXML | `<w:p w14:paraId="7A3B2"><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>...` | ❌ Noisy, confusing |
-| **Words XML** | `<d:h c="Heading1">Specifications</d:h>` | ✅ Clear: heading + text |
+| **Words XML** | `<h1>Specifications</h1>` | ✅ Clear: heading + text |
 | Plain Text | `Specifications for Data Center Racks` | ⚠️ No structure |
 
 ### 3.3 Semantic Preservation Score
@@ -272,6 +286,7 @@ At $0.15/1M input tokens (GPT-4 class):
 ✅ **Compact borders** — `at` attribute saves ~90% vs XML borders
 ✅ **Flat structure** — minimal nesting depth
 ✅ **Versioned format** — `version="1.0.1"` for evolution
+✅ **P1-P13 coverage** — line spacing, run language, table props, hidden text, vertical alignment, indentation, cell spacing, text direction, no-wrap
 
 ### 5.2 What Words XML Loses
 
@@ -284,8 +299,7 @@ At $0.15/1M input tokens (GPT-4 class):
 ### 5.3 What Needs Fixing
 
 ⚠️ **`at` border width unit** — contradiction between spec text and worked example
-⚠️ **`lang` optionality** — inconsistent across documents
-⚠️ **Noise matrix gaps** — 6 run-level constructs missing
+⚠️ **Noise matrix gaps** — 6 run-level constructs missing (now addressed: P1-P9)
 ⚠️ **Worked example** — only 35% feature coverage
 ⚠️ **No schema** — no XSD/RelaxNG for validation
 

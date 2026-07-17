@@ -17,7 +17,7 @@ The preprocessor operates in one of two modes:
 - `mode="semantic"` (default): stripped-down representation for **AI training** and **downstream consumption**.
 - `mode="lossless"`: preserves additional metadata for **round‑tripping** or **document‑reconstruction**. Differences from semantic mode:
   - Whitespace is NOT normalized (original spacing preserved).
-  - Tracked changes (`w:ins`/`w:del`) are emitted as `<change>` elements.
+  - Tracked changes (`w:ins`/`w:del`) are emitted as `<ins>`/`<del>` elements.
   - All other transformation rules remain the same.
 
 ### 1.1 Problem (semantic mode)
@@ -50,26 +50,25 @@ Emit a flat, semantic, versioned XML (`words`) that is:
 A flat, semantic, versioned XML:
 
 ```xml
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <style unit="in">
     <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
   </style>
   <write>
-    <d:h c="Heading1">Specifications for Data Center Racks</d:h>
+    <h1>Specifications for Data Center Racks</h1>
   </write>
 </words>
 ```
 
 ### 2.1 Grammar (v1.0.1)
 
-**Namespace declarations**: The root `<words>` element MUST declare three namespaces:
-- `xmlns="urn:words:v1"` — default namespace for structural elements (`<meta>`, `<style>`, `<write>`, `<notes>`, `<header>`, `<footer>`)
-- `xmlns:d="urn:words:v1:doc"` — prefix for block-level document content elements (`<d:p>`, `<d:h>`, `<d:ul>`, `<d:ol>`, `<d:table>`, `<d:code>`, `<d:quote>`, `<d:tr>`, `<d:th>`, `<d:td>`, `<d:li>`)
+**Namespace declarations**: The root `<words>` element MUST declare two namespaces:
+- `xmlns="urn:words:v1"` — default namespace for all elements (`<meta>`, `<style>`, `<write>`, `<notes>`, `<header>`, `<footer>`, `<p>`, `<h1>`-`<h9>`, `<ul>`, `<ol>`, `<table>`, `<pre>`, `<blockquote>`, `<tr>`, `<th>`, `<td>`, `<li>`, `<b>`, `<i>`, `<u>`, `<s>`, `<span>`, `<a>`, `<br>`, etc.)
 - `xmlns:s="urn:words:v1:style"` — prefix for style/layout elements (`<s:page>`, `<s:gap>`, etc.)
 - Inline elements (`<b>`, `<i>`, `<u>`, `<s>`, `<span>`, `<a>`, `<br>`, etc.) use **no prefix**
 
 ```text
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <meta>                         # optional document metadata (after root)
     <title>...</title>           # dc:title from docProps/core.xml
     <author>...</author>         # dc:creator
@@ -85,29 +84,31 @@ A flat, semantic, versioned XML:
             mt=".." mb=".." ml=".." mr=".."   # margins (top/bottom/left/right)
             mh=".." mf=".."/>    # header / footer margins
     # <s:page> MAY repeat once per document section (see MOD-6 / §2.4)
-    <s:gap el="d:h" c="Heading1" before=".." after=".."/>
-    <s:gap el="d:p" before=".." after=".."/>
-    <s:indent el="d:p"          # paragraph indentation (MOD-5)
+    <s:gap el="h" c="Heading1" before=".." after=".."/>
+    <s:gap el="p" before=".." after=".."/>
+    <s:line el="p" value="1.5" rule="auto"/>  # line spacing (LOSSLESS_METADATA)
+    <s:indent el="p"          # paragraph indentation (MOD-5)
               left=".." right=".." firstLine=".." hanging=".."/>
-    <s:align el="d:p" value="left|center|right|both"/> # paragraph alignment (LOSSLESS_METADATA)
+    <s:align el="p" value="left|center|right|both"/> # paragraph alignment (LOSSLESS_METADATA)
+    <s:cols n=".." space=".."/>  # multi-column layout — P19
     <s:col ref="n" w=".."/>     # column widths / grid; ref = table id (1-based index)
     <s:theme bg=".." fg=".."/>  # optional color tokens
   </style>
   <header id="n">                # header content (per section, optional)
-    <d:p>...</d:p>               # same block elements as <write>
+    <p>...</p>               # same block elements as <write>
   </header>
   <footer id="n">                # footer content (per section, optional)
-    <d:p>...</d:p>
+    <p>...</p>
   </footer>
   <write>                       # one document / one logical write session
                                 # any block element may carry dir="rtl"|"ltr" (MOD-7)
                                 # and lang=".." (BCP 47 language tag)
-    <d:h c="Heading1" lang="..">...</d:h>
-    <d:h c="Heading2" lang="..">...</d:h>
-    <d:h c="Heading3" lang="..">...</d:h>
-    <d:p lang="..">...</d:p>
-    <d:p at="bb 12 s1 #000000" lang="..">...</d:p>  # paragraph with border
-    <d:quote lang="..">...</d:quote>
+    <h1 lang="..">...</h1>
+    <h2 lang="..">...</h2>
+    <h3 lang="..">...</h3>
+    <p lang=".." valign="top|center|baseline">...</p>
+    <p at="bb 12 s1 #000000" lang=".." valign="top|center|baseline">...</p>  # paragraph with border
+    <blockquote lang="..">...</blockquote>
     <b>...</b>              # bold (inline)
     <i>...</i>              # italic (inline)
     <u>...</u>              # underline (inline)
@@ -116,32 +117,34 @@ A flat, semantic, versioned XML:
     <uppercase>...</uppercase> # all caps (inline) — MOD-4
     <sub>...</sub>          # subscript (inline)
     <sup>...</sup>          # superscript (inline)
-    <span font=".." size=".." color=".." highlight="..">...</span>  # font/style span (inline)
+    <bcs>...</bcs>          # Complex Script bold (inline) — P16
+    <ics>...</ics>          # Complex Script italic (inline) — P17
+    <span font=".." size=".." color=".." highlight=".." lang=".." hidden="true" fontEA=".." fontCS=".." sizeCS="..">...</span>  # font/style span (inline)
     <a href="...">...</a>   # hyperlink (r:id or instrText HYPERLINK) — MOD-3
     <br type="textWrapping|page|column|clear"/> # line break — MIN-1
     <fn-ref id="n" type="footnote|endnote"/>  # marker with type attribute
-    <change type="insert|delete">...</change> # tracked change (optional, LOSSLESS_METADATA)
-    <d:ul type="bullet|...">    # unordered list (type from numFmt)
-      <d:li>                    # list item; nesting via child <d:ul>/<d:ol>
+    <ins>...</ins> / <del>...</del> # tracked change (optional, LOSSLESS_METADATA)
+    <ul type="bullet|...">    # unordered list (type from numFmt)
+      <li>                    # list item; nesting via child <ul>/<ol>
         ...                     # text + inline elements
-        <d:ul type="...">       # nested sub-list (one level deeper)
-          <d:li>...</d:li>
-        </d:ul>
-      </d:li>
-    </d:ul>
-    <d:ol type="decimal|lowerLetter|..." start="n">  # ordered list (type from numFmt)
-      <d:li>
+        <ul type="...">       # nested sub-list (one level deeper)
+          <li>...</li>
+        </ul>
+      </li>
+    </ul>
+    <ol type="decimal|lowerLetter|..." start="n">  # ordered list (type from numFmt)
+      <li>
         ...
-        <d:ol type="...">       # nested ordered sub-list
-          <d:li>...</d:li>
-        </d:ol>
-      </d:li>
-    </d:ol>
-    <d:code>...</d:code>        # code / monospace block (whitespace preserved verbatim)
-    <d:table id="n" at="...">            # table; id = 1-based index, matches <s:col ref>; at = borders
-      <d:tr><d:th colspan="n" rowspan="n" lang="..">..</d:th></d:tr>
-      <d:tr><d:td colspan="n" rowspan="n" at="..." lang="..">..</d:td></d:tr>
-    </d:table>
+        <ol type="...">       # nested ordered sub-list
+          <li>...</li>
+        </ol>
+      </li>
+    </ol>
+    <pre>...</pre>        # code / monospace block (whitespace preserved verbatim)
+    <table id="n" at="..." c=".." width=".." align="left|center|right" indent=".." cellSpacing=".." caption=".." summary="..">  # table
+      <tr><th colspan="n" rowspan="n" lang=".." valign="top|center|bottom" textDir=".." noWrap="true">..</th></tr>
+      <tr><td colspan="n" rowspan="n" at="..." lang=".." valign="top|center|bottom" textDir=".." noWrap="true">..</td></tr>
+    </table>
     <img alt="..."/>         # PLACEHOLDER ONLY (images excluded — §3.0)
   </write>
   <notes>                         # footnote/endnote bodies, bookmarks, comments
@@ -203,14 +206,14 @@ with page size and margins.
     portrait document). Renderers use the entry matching the section in question.
 
   - `<s:indent>` — paragraph indentation (MOD-5), from `w:pPr/w:ind`:
-    - `el` — target element (usually `d:p`).
+    - `el` — target element (usually `p`).
     - `left`, `right` — left/right indent.
     - `firstLine` — first-line indent (positive) ; `hanging` — hanging indent (positive).
     - Sign convention follows Word: `w:ind/@w:firstLine` positive → `firstLine`;
       `w:ind/@w:hanging` positive → `hanging`.
 
   - `<s:align>` — paragraph alignment (LOSSLESS_METADATA), from `w:pPr/w:jc`:
-    - `el` — target element (usually `d:p`).
+    - `el` — target element (usually `p`).
     - `value` — alignment: `left`, `center`, `right`, `both` (justify).
     - Mapped from `w:jc/@w:val`: `left` → `left`, `center` → `center`, `right` → `right`,
       `both` → `both`.
@@ -250,8 +253,12 @@ Allowed units: `in` (inch, default), `pt` (point), `px` (pixel), `cm`, `mm`.
   twips → the declared unit before emitting.
 - `<s:gap>` — spacing rules keyed by element (`el`) and optional style (`c`):
   `before`/`after` gaps in the declared unit. Lets downstream renderers reproduce vertical rhythm.
+- `<s:line>` — line spacing keyed by element (`el`) and optional style (`c`):
+  `value` = line spacing multiplier (e.g., `1.5` for 1.5 line spacing, `2` for double);
+  `rule` = `auto` (proportional), `exact` (fixed), `atLeast` (minimum). From `w:spacing/@w:line`
+  and `@w:lineRule`. Example: `<s:line el="p" value="1.5" rule="auto"/>`.
 - `<s:col>` — column/grid widths (from `w:tblGrid` / `w:gridCol`). Each `<s:col>` carries a
-  `ref="n"` attribute that matches the `<d:table id="n">` it belongs to (1-based document
+  `ref="n"` attribute that matches the `<table id="n">` it belongs to (1-based document
   order). Tables without a `w:tblGrid` emit no `<s:col>`.
 - `<s:theme>` — optional color tokens (background/foreground) from theme part.
 
@@ -268,8 +275,8 @@ Format: `at="[side] [width] [style][space] [color]; ..."` where:
 
 Examples:
 ```xml
-<d:p at="bb 12 s1 #000000"/>                     <!-- bottom border only -->
-<d:p at="bt 8 d2 #FF0000; bb 4 s1 #000000"/>     <!-- top double + bottom single -->
+<p at="bb 12 s1 #000000"/>                     <!-- bottom border only -->
+<p at="bt 8 d2 #FF0000; bb 4 s1 #000000"/>     <!-- top double + bottom single -->
 <td at="bb 4 s1 #000000"/>                        <!-- cell bottom border -->
 <table at="bb 4 s1 #000000"/>                     <!-- table default border -->
 ```
@@ -285,7 +292,7 @@ extracted from the corresponding `w:hdrReference`/`w:ftrReference` parts.
 - `<header id="n">` — header content for section `n` (1-based, matches `<s:page>` order).
 - `<footer id="n">` — footer content for section `n`.
 - Content inside `<header>`/`<footer>` uses the same block elements as `<write>`
-  (`<d:p>`, `<d:h>`, `<d:table>`, etc.) processed through the full transformation rules.
+  (`<p>`, `<h1>`-`<h9>`, `<table>`, etc.) processed through the full transformation rules.
 - If a header/footer part is empty or missing, the corresponding element is omitted.
 - Headers/footers are **NOT** excluded — only their presentation chrome is dropped.
 
@@ -325,16 +332,17 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | DOCX element | Category | Action / Target | Rationale |
 |--------------|----------|-----------------|-----------|
 | `w:body` | container | unwrap | structural only |
-| `w:p` | struct | `<d:h>`/`<d:p>`/`<d:li>`/`<d:quote>` | semantic block |
+| `w:p` | struct | `<h1>`-`<h9>`/`<p>`/`<li>`/`<blockquote>` | semantic block |
 | `w:pPr/w:pStyle` | style | `c="..."` attr | keep style name |
-| `w:pPr/w:numPr` | list | drives `<d:ul>`/`<d:ol>` | list structure |
-| `w:pPr/w:spacing` | layout | `<s:gap before/after>` | vertical rhythm |
+| `w:pPr/w:numPr` | list | drives `<ul>`/`<ol>` | list structure |
+| `w:pPr/w:spacing` | layout | `<s:gap before/after>` + `<s:line>` | vertical rhythm + line spacing |
 | `w:pPr/w:ind` | layout | `<s:indent>` (in `<style>`) | indentation preserved (MOD-5) |
 | `w:pPr/w:jc` | layout | `<s:align>` in `<style>` | justification preserved as LOSSLESS_METADATA |
+| `w:pPr/w:textAlignment` | keep | `valign="top|center|baseline"` on `<p>` | vertical text alignment |
 | `w:bidi` (p), `w:rPr/w:rtl` (r), `w:dir`/`w:bdo` | direction | `dir="rtl"` attribute on element | RTL/bidi support (MOD-7) |
 | `w:pPr/w:outlineLvl` | style | DROP (inferred from heading) | redundant |
 | `w:pPr/w:suppressLineNumbers`,`w:keepNext`,`w:widowControl` | misc | DROP | renderer hints |
-| `w:pPr/w:pBdr` | present | `at="bb ..."` on `<d:p>` | paragraph borders preserved compact |
+| `w:pPr/w:pBdr` | present | `at="bb ..."` on `<p>` | paragraph borders preserved compact |
 | `w:pPr/w:shd` | present | DROP | paragraph shading noise |
 | `w:pPr/w:tabs`,`w:pageBreakBefore`,`w:framePr` | misc | DROP | layout noise |
 | `w:r` | run | text content | — |
@@ -351,6 +359,13 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:rPr/w:color` | fmt | `<span color="..">` | text color hex (KEEP) |
 | `w:rPr/w:highlight` | fmt | `<span highlight="..">` | highlight color (KEEP) |
 | `w:rPr/w:spacing` | present | DROP | character spacing noise |
+| `w:rPr/w:lang` | keep | `lang="..."` on `<span>` | run-level language |
+| `w:rPr/w:vanish` | keep | `hidden="true"` on `<span>` | hidden text |
+| `w:rPr/w:rFonts/@w:eastAsia` | keep | `fontEA="..."` on `<span>` — P14 | East Asian font family |
+| `w:rPr/w:rFonts/@w:cs` | keep | `fontCS="..."` on `<span>` — P15 | Complex Script font family |
+| `w:rPr/w:bCs` | keep | `<bcs>...</bcs>` — P16 | Complex Script bold |
+| `w:rPr/w:iCs` | keep | `<ics>...</ics>` — P17 | Complex Script italic |
+| `w:rPr/w:szCs` | keep | `sizeCS="..."` on `<span>` — P18 | Complex Script font size |
 | `w:br`,`w:cr` | break | `<br type="textWrapping|page|column|clear"/>` | explicit break w/ kind (MIN-1) |
 | `w:tab` | break | normalize → single space | tab noise |
 | `w:noBreakHyphen`,`w:softHyphen`,`w:sym` | text | keep as char | literal |
@@ -360,17 +375,28 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 | `w:bookmarkStart/End` | anchor | KEEP in `<notes>` as `<bm id="name"/>` | bookmark position preserved |
 | `w:commentRange*`,`w:commentReference` | comment | KEEP in `<notes>` as `<comment>` | comment text preserved |
 | `w:proofError` | proof | DROP | spelling/grammar noise |
-| `w:ins`,`w:del` (track changes) | change | `<change type="insert|delete">` (optional, LOSSLESS_METADATA) | revision tracking preserved for legal docs |
+| `w:ins`,`w:del` (track changes) | change | `<ins>/<del>` (optional, LOSSLESS_METADATA) | revision tracking preserved for legal docs |
 | `w:sdt`,`w:smartTag`,`w:customXml` | wrapper | unwrap children | tag wrappers |
 | `w:sectPr` | section | feed `<s:page>` in `<style>` | page layout |
-| `w:tbl` | struct | `<d:table>` | table |
+| `w:sectPr/w:cols` | keep | `<s:cols n=".." space=".."/>` in `<style>` — P19 | multi-column layout |
+| `w:tbl` | struct | `<table>` | table |
 | `w:tblGrid`/`w:gridCol` | table layout | `<s:col ref="n">` widths (in `<style>`) | column widths linked by `ref` (MIN-3) |
-| `w:tblPr` (borders) | present | `at="..."` on `<d:table>` | table borders preserved compact |
+| `w:tblPr` (borders) | present | `at="..."` on `<table>` | table borders preserved compact |
 | `w:tblPr` (shading) | present | DROP | table shading noise |
-| `w:tcPr` (borders) | present | `at="..."` on `<d:td>`/`<d:th>` | cell borders preserved compact |
+| `w:tblPr/w:tblStyle` | style | `c="..."` attr on `<table>` | keep style name |
+| `w:tblPr/w:tblCaption` | keep | `caption="..."` attr on `<table>` | accessibility caption |
+| `w:tblPr/w:tblDescription` | keep | `summary="..."` attr on `<table>` | accessibility description |
+| `w:tblPr/w:tblW` | keep | `width="..."` attr on `<table>` | table width |
+| `w:tblPr/w:jc` | keep | `align="left|center|right"` attr on `<table>` | table alignment |
+| `w:tblPr/w:tblInd` | keep | `indent="..."` attr on `<table>` — P10 | table indentation (in declared unit) |
+| `w:tblPr/w:tblCellSpacing` | keep | `cellSpacing="..."` attr on `<table>` — P11 | cell spacing (in declared unit) |
+| `w:tcPr` (borders) | present | `at="..."` on `<td>`/`<th>` | cell borders preserved compact |
 | `w:tcPr` (shading) | present | DROP | cell shading noise |
-| `w:tr`/`w:tc` | struct | `<d:tr>`/`<d:th>`/`<d:td>` | table cells |
-| `w:gridSpan`/`w:vMerge` | merge | `colspan`/`rowspan` on `<d:td>`/`<d:th>`; continue cells omitted | grid integrity preserved |
+| `w:tcPr/w:vAlign` | keep | `valign="top|center|bottom"` on `<td>`/`<th>` | vertical alignment |
+| `w:tcPr/w:textDirection` | keep | `textDir="..."` on `<td>`/`<th>` — P12 | text direction in cell |
+| `w:tcPr/w:noWrap` | keep | `noWrap="true"` on `<td>`/`<th>` — P13 | no-wrap flag |
+| `w:tr`/`w:tc` | struct | `<tr>`/`<th>`/`<td>` | table cells |
+| `w:gridSpan`/`w:vMerge` | merge | `colspan`/`rowspan` on `<td>`/`<th>`; continue cells omitted | grid integrity preserved |
 | `w:footnoteReference`/`w:endnoteReference` | note | `<fn-ref id="n" type="...">` marker; `<fn id="n" type="...">` body in `<notes>` | note marker + body, type distinguishes footnote/endnote |
 | `w:drawing` (image blip) | **EXCLUDE** | `<img alt>` placeholder | images excluded |
 | `w:pict` (VML) | **EXCLUDE** | DROP | legacy VML, no text extracted |
@@ -394,16 +420,16 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 
 | Source (`w:pStyle w:val`) | Target element              |
 |----------------------------|-----------------------------|
-| `Heading1`                 | `<d:h c="Heading1">`        |
-| `Heading2`                 | `<d:h c="Heading2">`        |
-| `Heading3`                 | `<d:h c="Heading3">`        |
-| `Title`                    | `<d:h c="Title">`           |
-| `ListParagraph` (+ numPr)  | `<d:li>` (inside `<d:ul>`/`<d:ol>`) |
-| `Quote`/`IntenseQuote`/`BlockText` | `<d:quote>` (MIN-2) |
-| Code-like styles (see below) | `<d:code>`               |
-| (none / `Normal`)          | `<d:p>`                     |
+| `Heading1`                 | `<h1>`        |
+| `Heading2`                 | `<h2>`        |
+| `Heading3`                 | `<h3>`        |
+| `Title`                    | `<h1>`           |
+| `ListParagraph` (+ numPr)  | `<li>` (inside `<ul>`/`<ol>`) |
+| `Quote`/`IntenseQuote`/`BlockText` | `<blockquote>` (MIN-2) |
+| Code-like styles (see below) | `<pre>`               |
+| (none / `Normal`)          | `<p>`                     |
 
-- **Code block detection**: a paragraph maps to `<d:code>` when either:
+- **Code block detection**: a paragraph maps to `<pre>` when either:
   - Its `w:pStyle w:val` resolved via `styles.xml` matches a code-like style name
     (`Code`, `HTML`, `XML`, `PlainText`, `SourceCode`, `Example`, `Output`, or any style
     whose `w:name` contains `"Code"`, `"Source"`, or `"Output"` as a word), OR
@@ -411,19 +437,19 @@ Every OOXML construct the preprocessor encounters is classified into one of four
     (`w:rPr/w:rFonts/@w:ascii` or `@w:hAnsi` matching `Courier New`, `Consolas`,
     `Lucida Console`, `Menlo`, `Monaco`, `monospace`, or any font containing `"Mono"` or
     `"Courier"`, case-insensitive).
-  - The entire paragraph content (including all runs) becomes the text content of `<d:code>`,
+  - The entire paragraph content (including all runs) becomes the text content of `<pre>`,
     with original spacing preserved per §3.5.
-  - If a paragraph qualifies as `<d:code>`, all inline formatting tags (`<b>`, `<i>`,
+  - If a paragraph qualifies as `<pre>`, all inline formatting tags (`<b>`, `<i>`,
     etc.) inside it are suppressed — only the raw text is kept.
 - Drop `w:pPr` presentation noise (`w14:paraId`, `w:rsidR`, shading, tabs, etc.); layout attributes (spacing, indent, alignment) are preserved in `<style>` per §3.0; borders preserved via `at` attribute.
 - The `c` attribute preserves the **original style name** for downstream semantic tagging.
 - **Style resolution**: if `w:pStyle w:val` is a custom name, resolve it via `styles.xml`
   (`w:styleId` → `w:name`) to a semantic role (Heading/Quote/etc.) when possible; otherwise
-  fall back to `c="<customName>"` and treat as `<d:p>`.
+  fall back to `c="<customName>"` and treat as `<p>`.
 - **Style inheritance chain**: Word styles inherit from a parent via `w:basedOn`. The
   preprocessor MUST walk the inheritance chain to determine the final semantic role.
   For example, if `MyHeading` has `<w:basedOn w:val="Heading1"/>`, it is treated as
-  `<d:h c="MyHeading">`. Resolution algorithm:
+   `<h1 c="MyHeading">`. Resolution algorithm:
   1. Start with the paragraph's `w:pStyle w:val`.
   2. Look up its `w:style` entry in `styles.xml`.
   3. If it has a `w:basedOn` reference, recurse into the parent style.
@@ -435,7 +461,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 
 - `w:r` → `w:t` text becomes the element's text content.
 - **Language (BCP 47)**: The `lang` attribute is set on the **target block element**
-  (`<d:p>`, `<d:h>`, `<d:li>`, `<d:td>`, etc.) based on:
+  (`<p>`, `<h1>`-`<h9>`, `<li>`, `<td>`, etc.) based on:
   1. Paragraph-level `w:pPr/w:pStyle/lang` if present
   2. Section default `w:lang` if paragraph-level is absent
   3. The first run's `w:rPr/w:rLang` as fallback
@@ -465,74 +491,74 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   the normal rules. Only the *text* is kept; the shape/frame chrome is dropped.
   - **Inline anchor handling**: when a textbox is anchored inside a `<w:r>` run (inline),
     the host paragraph's runs *before* and *after* the textbox anchor are merged into a
-    single `<d:p>` element. The textbox's own paragraphs are NOT spliced mid-sentence;
-    instead they are emitted as **sibling elements immediately after** the host `<d:p>`.
+    single `<p>` element. The textbox's own paragraphs are NOT spliced mid-sentence;
+    instead they are emitted as **sibling elements immediately after** the host `<p>`.
     This prevents sentence fragmentation while keeping document order intact.
   - If the textbox is the sole content of its host paragraph (no surrounding runs), its
-    paragraphs replace the host `<d:p>` directly.
+    paragraphs replace the host `<p>` directly.
 - **Footnotes/endnotes**: `w:footnoteReference`/`w:endnoteReference` → `<fn-ref id="n" type="footnote|endnote"/>`
   marker in `<write>`. The body is extracted from `word/footnotes.xml` or `word/endnotes.xml`,
   processed through normal paragraph/run rules, and placed in the `<notes>` block as
   `<fn id="n" type="footnote|endnote">...</fn>` (see §2.7).
-- **Tracked changes (LOSSLESS_METADATA)**: `w:ins` → `<change type="insert">...</change>`,
-  `w:del` → `<change type="delete">...</change>` (deleted text included for context).
+- **Tracked changes (LOSSLESS_METADATA)**: `w:ins` → `<ins>...</ins>`,
+  `w:del` → `<del>...</del>` (deleted text included for context).
   Only emitted when the preprocessor is in `mode="lossless"`; in `mode="semantic"` (default),
   they are dropped per §3.0.
 
 ### 3.3 Lists
 
-- Group consecutive `ListParagraph` paragraphs into a `<d:ul>` or `<d:ol>` with `<d:li>`
+- Group consecutive `ListParagraph` paragraphs into a `<ul>` or `<ol>` with `<li>`
   children. Grouping MUST consider all of the following:
   - `w:numId` — numeric ID of the numbering definition.
   - `w:ilvl` — indent level (drives nesting).
   - `w:abstractNumId` — resolved from `numbering.xml` via the `w:num` entry.
   - **Restart state**: a `w:lvlOverride` with `w:startOverride` resets the numbering;
-    this forces a SPLIT into a new `<d:ol>` element even if `w:numId` is unchanged.
+    this forces a SPLIT into a new `<ol>` element even if `w:numId` is unchanged.
   - A change in `w:abstractNumId` (different numbering scheme) also forces a split.
 - Paragraphs with the same `w:numId` but different `w:ilvl` are parent/child within the
   same list structure (see nesting rules below).
 - **Numbering restart**: detect `w:lvlOverride` in `numbering.xml` (under the matching
   `w:num` definition). When a `w:lvlOverride/w:startOverride/@w:val` resets numbering to 1
-  (or another value), the preprocessor MUST split the list into a new `<d:ol>` element at
-  the restart point. The new `<d:ol>` carries `start="n"` where `n` is the restart value
+  (or another value), the preprocessor MUST split the list into a new `<ol>` element at
+  the restart point. The new `<ol>` carries `start="n"` where `n` is the restart value
   (default `1`). Absent `w:lvlOverride`, no `start` attribute is emitted.
 - **List type**: resolve `w:numId` → `w:abstractNumId` → `w:numFmt` in `numbering.xml`:
-  - `bullet` → `<d:ul type="bullet">`
-  - `decimal` → `<d:ol type="decimal">`
-  - `lowerLetter`/`upperLetter` → `<d:ol type="lowerLetter|upperLetter">`
-  - `lowerRoman`/`upperRoman` → `<d:ol type="lowerRoman|upperRoman">`
+  - `bullet` → `<ul type="bullet">`
+  - `decimal` → `<ol type="decimal">`
+  - `lowerLetter`/`upperLetter` → `<ol type="lowerLetter|upperLetter">`
+  - `lowerRoman`/`upperRoman` → `<ol type="lowerRoman|upperRoman">`
   - **Fallback (MOD-2)**: any other `w:numFmt` value (e.g., `hebrew1`, `arabicAlpha`,
-    `thaiNumbers`, `chicago`, `ideographDigital`, …) → `<d:ol type="...">` with the
+    `thaiNumbers`, `chicago`, `ideographDigital`, …) → `<ol type="...">` with the
     **raw `w:numFmt` value preserved verbatim** as the `type` attribute. Never coerce to
     `decimal`. This keeps the numbering scheme discoverable downstream.
-- **Nesting structure**: nested `<d:ul>`/`<d:ol>` elements are placed **inside** the
-  `<d:li>` of the parent item. A level-N item becomes a direct child of the level-(N−1)
-  `<d:li>`. Example:
+- **Nesting structure**: nested `<ul>`/`<ol>` elements are placed **inside** the
+  `<li>` of the parent item. A level-N item becomes a direct child of the level-(N−1)
+  `<li>`. Example:
   ```xml
-  <d:ul type="bullet">
-    <d:li>Parent item
-      <d:ul type="bullet">
-        <d:li>Child item (level 1)</d:li>
-      </d:ul>
-    </d:li>
-  </d:ul>
+  <ul type="bullet">
+    <li>Parent item
+      <ul type="bullet">
+        <li>Child item (level 1)</li>
+      </ul>
+    </li>
+  </ul>
   ```
-  This structure allows arbitrary nesting depth and mixed list types (e.g., `<d:ol>` inside
-  `<d:li>` inside `<d:ul>`).
+  This structure allows arbitrary nesting depth and mixed list types (e.g., `<ol>` inside
+  `<li>` inside `<ul>`).
 
 ### 3.4 Tables
 
-- `w:tbl` → `<d:table id="n">` where `n` is a 1-based index across all tables in the
+- `w:tbl` → `<table id="n">` where `n` is a 1-based index across all tables in the
   document (in **pre-order traversal** of the XML tree). This `id` links back to
   `<s:col ref="n">` in `<style>`. Nested tables receive IDs in pre-order sequence
   (parent table gets its ID before its child tables).
-- `w:tr` → `<d:tr>`.
+- `w:tr` → `<tr>`.
 - **Header rows (CRIT-2)**: a row is a header **iff** its `w:trPr/w:tblHeader` flag is set
-  (not by position). Rows with `w:tblHeader` → `<d:tr><d:th>…</d:th></d:tr>`; all other
-  rows → `<d:tr><d:td>…</d:td></d:tr>`. A table may have zero, one, or several successive
-  header rows — each flagged row becomes a `<d:th>` row.
+  (not by position). Rows with `w:tblHeader` → `<tr><th>…</th></tr>`; all other
+  rows → `<tr><td>…</td></tr>`. A table may have zero, one, or several successive
+  header rows — each flagged row becomes a `<th>` row.
 - **Merge cells — grid reconstruction**:
-  - `w:gridSpan` → `colspan="n"` on `<d:td>`/`<d:th>`.
+  - `w:gridSpan` → `colspan="n"` on `<td>`/`<th>`.
   - `w:vMerge` (vertical merge) requires reconstructing the grid to determine the final
     `rowspan`. Algorithm:
     1. Parse all rows of the table to build a virtual grid.
@@ -548,7 +574,7 @@ Every OOXML construct the preprocessor encounters is classified into one of four
   - Nested tables handled recursively.
 - **Column widths (MIN-3)**: the authoritative source is `w:tblGrid` → `w:gridCol/@w:w`.
   Emit one `<s:col ref="n" w=".."/>` per `w:gridCol` into `<style>`, where `n` is the
-  `<d:table id>` of the owning table. Per‑cell `w:tcW` is treated as a secondary override
+  `<table id>` of the owning table. Per‑cell `w:tcW` is treated as a secondary override
   only when a `w:gridCol` is absent.
 - Drop `w:tblPr`/`w:tcPr` shading; borders preserved via `at` attribute; `w:tblW` is informational.
 
@@ -561,13 +587,13 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 - **Whitespace normalization** (applies in `semantic` mode only):
   - Collapse repeated spaces to single space, trim line breaks inside a run.
   - `w:tab` → single space; `w:br`/`w:cr` → `<br type="…"/>`.
-  - **Exception**: content inside `<d:code>` blocks is exempt — all original spacing,
+  - **Exception**: content inside `<pre>` blocks is exempt — all original spacing,
     indentation, and line breaks are preserved verbatim regardless of mode.
   - **`xml:space` preservation**: if a `<w:t>` element carries `xml:space="preserve"`,
   the preprocessor MUST honor it and NOT collapse whitespace within that run,
   regardless of mode. This prevents data loss in poetry, code snippets, and
   ASCII diagrams where spacing is intentional.
-- `w:tab` → single space (except inside `<d:code>` where it remains literal tab, or
+- `w:tab` → single space (except inside `<pre>` where it remains literal tab, or
   when `xml:space="preserve"`); `w:br`/`w:cr` → `<br type="…"/>` preserving `@w:type`
   (`textWrapping` default, `page`, `column`, `clear`) (MIN-1).
 - `dir="rtl"` attributes are preserved on the relevant elements (MOD-7).
@@ -633,22 +659,22 @@ Every OOXML construct the preprocessor encounters is classified into one of four
 **Output (`words` v1.0.1):**
 
 ```xml
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <style unit="in">
     <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
-    <s:gap el="d:h" c="Heading1" before="0.22" after="0.11"/>
-    <s:gap el="d:p" before="0" after="0.11"/>
+    <s:gap el="h" c="Heading1" before="0.22" after="0.11"/>
+    <s:gap el="p" before="0" after="0.11"/>
   </style>
   <write>
-    <d:h c="Heading1" at="bb 12 s1 #000000">Specifications for Data Center Racks</d:h>
-    <d:p>Rack <b>42U</b> houses servers.<fn-ref id="1" type="footnote"/></d:p>
-    <d:ul type="bullet">
-      <d:li>Rack mount standard</d:li>
-      <d:li>Cold aisle containment</d:li>
-    </d:ul>
-    <d:p><a href="https://example.com/guide">See official guide</a></d:p>
-    <d:p>Note: <span font="Arial" size="12" color="FF0000">red text in Arial 12pt</span>. This is an inline drawing with a textbox (see output note below).</d:p>
-    <d:p>Textbox content extracted: Use C13 category bolt.</d:p>
+    <h1 at="bb 12 s1 #000000">Specifications for Data Center Racks</h1>
+    <p>Rack <b>42U</b> houses servers.<fn-ref id="1" type="footnote"/></p>
+    <ul type="bullet">
+      <li>Rack mount standard</li>
+      <li>Cold aisle containment</li>
+    </ul>
+    <p><a href="https://example.com/guide">See official guide</a></p>
+    <p>Note: <span font="Arial" size="12" color="FF0000">red text in Arial 12pt</span>. This is an inline drawing with a textbox (see output note below).</p>
+    <p>Textbox content extracted: Use C13 category bolt.</p>
   </write>
   <notes>
     <fn id="1" type="footnote">This is the footnote text for reference 1.</fn>

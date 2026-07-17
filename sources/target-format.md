@@ -12,7 +12,7 @@ This document specifies the **`words`** intermediate markup format - the output 
 ## XML Structure
 
 ```xml
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <meta/>                      # document metadata (optional)
   <style unit="in">            # layout configuration (required)
     <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
@@ -42,20 +42,22 @@ Document-level provenance from `docProps/core.xml`:
 Layout configuration extracted from `w:sectPr`:
 - `<s:page>` - page geometry
 - `<s:gap>` - spacing rules
+- `<s:line>` - line spacing
 - `<s:indent>` - paragraph indentation
 - `<s:align>` - paragraph alignment
+- `<s:cols>` - multi-column layout
 - `<s:col>` - table column widths
 - `<s:theme>` - color tokens
 
 ### Content Blocks (`<write>`)
 Semantic content elements:
-- `<d:h>` - headings (Level 1-9), supports `at` attribute for borders
-- `<d:p>` - paragraphs, supports `at` attribute for borders
-- `<d:quote>` - blockquotes
-- `<d:code>` - code blocks (whitespace preserved)
-- `<d:ul>` - unordered lists
-- `<d:ol>` - ordered lists
-- `<d:table>` - tables (with colspan/rowspan, supports `at` attribute for borders)
+- `<h1>`-`<h9>` - headings (Level 1-9), supports `at` attribute for borders
+- `<p>` - paragraphs, supports `at` and `valign` attributes
+- `<blockquote>` - blockquotes
+- `<pre>` - code blocks (whitespace preserved)
+- `<ul>` - unordered lists
+- `<ol>` - ordered lists
+- `<table>` - tables (with colspan/rowspan, supports `at`, `width`, `align`, `indent`, `cellSpacing`, `caption`, `summary` attributes)
 
 ### Inline Elements (no prefix)
 - `<b>` - bold
@@ -66,11 +68,13 @@ Semantic content elements:
 - `<uppercase>` - all caps
 - `<sub>` - subscript
 - `<sup>` - superscript
+- `<bcs>` - Complex Script bold
+- `<ics>` - Complex Script italic
 - `<a>` - hyperlinks
 - `<br>` - line breaks
 - `<fn-ref id="n" type="footnote|endnote">` - footnote/endnote marker (self-closing, type required)
-- `<change>` - tracked changes (lossless mode only)
-- `<span>` - font/style span (font, size, color, highlight)
+- `<ins>`/`<del>` - tracked changes (lossless mode only)
+- `<span>` - font/style span (font, size, color, highlight, lang, hidden, fontEA, fontCS, sizeCS)
 - `<img>` - image placeholder
 
 ### Notes Elements (in `<notes>`, no prefix)
@@ -81,13 +85,13 @@ Semantic content elements:
 ## Attributes
 
 ### Common Attributes
-- `lang="..."` - BCP 47 language tag (block elements)
+- `lang="..."` - BCP 47 language tag (block elements and `<span>`)
 - `dir="rtl|ltr"` - text direction
 - `c="..."` - original style name
 - `at="..."` - compact border representation (e.g., `at="bb 12 s1 #000000"`)
 
 ### Border Attribute (`at`)
-Compact syntax for borders on `<d:p>`, `<d:h>`, `<d:td>`, `<d:th>`, `<d:table>`:
+Compact syntax for borders on `<p>`, `<h1>`-`<h9>`, `<td>`, `<th>`, `<table>`:
 - Format: `at="[side] [width] [style][space] [color]; ..."`
 - Sides: `bt` (top), `bb` (bottom), `bl` (left), `br` (right)
 - Styles: `s` (single), `d` (double), `ds` (dashed), `dt` (dotted), `n` (none)
@@ -99,12 +103,22 @@ Compact syntax for borders on `<d:p>`, `<d:h>`, `<d:td>`, `<d:th>`, `<d:table>`:
 - `mt`, `mb`, `ml`, `mr` - margins
 - `mh`, `mf` - header/footer margins
 - `before`, `after` - spacing
+- `value`, `rule` - line spacing (value = multiplier, rule = auto|exact|atLeast)
 - `left`, `right` - indentation
 
 ### Table Attributes
 - `id="n"` - 1-based table index
 - `colspan="n"` - horizontal merge
 - `rowspan="n"` - vertical merge
+- `width="..."` - table width (in declared unit)
+- `align="left|center|right"` - table alignment
+- `indent="..."` - table indentation (in declared unit)
+- `cellSpacing="..."` - cell spacing (in declared unit)
+- `caption="..."` - accessibility caption
+- `summary="..."` - accessibility description
+- `valign="top|center|bottom"` - cell vertical alignment (on `<td>`/`<th>`)
+- `textDir="..."` - text direction in cell (on `<td>`/`<th>`)
+- `noWrap="true"` - no-wrap flag (on `<td>`/`<th>`)
 
 ### List Attributes
 - `type="bullet|decimal|lowerLetter|..."` - list style

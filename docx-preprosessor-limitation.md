@@ -46,16 +46,19 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
   frame (`w:framePr`), `pageBreakBefore`, `keepNext`,
   `widowControl`, `outlineLvl`.
   Note: `w:jc` (justification) is **preserved** as `<s:align>` in `<style>` (LOSSLESS_METADATA).
-  Note: `w:pBdr` (borders) is **preserved** via compact `at` attribute on `<d:p>`/`<d:h>`.
+  Note: `w:pBdr` (borders) is **preserved** via compact `at` attribute on `<p>`/`<h1>`-`<h9>`.
+  Note: `w:pPr/w:spacing/@w:line` is **preserved** as `<s:line>` in `<style>` (P1, LOSSLESS_METADATA).
+  Note: `w:pPr/w:textAlignment` is **preserved** as `<p valign="...">` (P8, LOSSLESS_METADATA).
 - **Run presentation**: `w:rPr/w:spacing`,
   `w:shadow`, `w:emboss`, `w:imprint`, `w:effect`, `w:border` (run), `w:shd` (run).
   Note: `w:rFonts`, `w:sz`, `w:color`, `w:highlight` are **preserved** via `<span>` (see spec §3.2).
+  `w:rPr/w:lang` is **preserved** as `<span lang="...">` (P2). `w:rPr/w:vanish` is **preserved** as `<span hidden="true">` (P9).
 - **Fields**: `w:fldSimple`, `w:fldChar`, `w:instrText` (TOC, PAGE, REF, …) and their
   cached results — except HYPERLINK (resolved via `r:id` **or** `instrText`), kept as `<a>`.
 - **Anchors**: `w:bookmarkStart` / `w:bookmarkEnd` — **preserved** in `<notes>` as `<bm id="name"/>`.
 - **Review**: `w:commentRange*`, `w:commentReference` — **preserved** in `<notes>` as `<comment>`.
   `w:proofError` — dropped.
-- **Track changes (semantic mode)**: `w:ins`, `w:del`, `w:delText` — dropped in `mode="semantic"` (default); preserved as `<change>` in `mode="lossless"`.
+- **Track changes (semantic mode)**: `w:ins`, `w:del`, `w:delText` — dropped in `mode="semantic"` (default); preserved as `<ins>`/`<del>` in `mode="lossless"`.
 - **Wrappers**: `w:sdt`, `w:smartTag`, `w:customXml` — unwrapped to children.
 
 > These removals are intentional noise reduction, not defects.
@@ -68,11 +71,11 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 
 | Construct | Handling | Lost detail |
 |-----------|----------|-------------|
-| **Table styling** (`w:tblPr`/`w:tcPr`) | borders preserved via `at` attribute; shading dropped; `w:tblGrid`/`w:gridCol` → `<s:col ref="n">` linked to `<d:table id="n">`; `colspan`/`rowspan` preserved | shading/color lost |
-| **Section layout** (`w:sectPr`) | page size + margins → `<s:page>`; **multiple sections** (`<s:page>` per section); headers/footers → `<header>`/`<footer>` | — |
+| **Table styling** (`w:tblPr`/`w:tcPr`) | borders preserved via `at` attribute; shading dropped; `w:tblGrid`/`w:gridCol` → `<s:col ref="n">` linked to `<table id="n">`; `colspan`/`rowspan` preserved; `w:tblW` → `<table width>` (P5); `w:jc` → `<table align>` (P6); `w:tblInd` → `<table indent>` (P10); `w:tblCellSpacing` → `<table cellSpacing>` (P11); `w:tblCaption` → `<table caption>` (P3); `w:tblDescription` → `<table summary>` (P4); `w:tcPr/w:vAlign` → `<td valign>` / `<th valign>` (P7); `w:tcPr/w:textDirection` → `<td textDir>` / `<th textDir>` (P12); `w:tcPr/w:noWrap` → `<td noWrap>` / `<th noWrap>` (P13) | shading/color lost |
+| **Section layout** (`w:sectPr`) | page size + margins → `<s:page>`; **multiple sections** (`<s:page>` per section); headers/footers → `<header>`/`<footer>`; `w:cols` → `<s:cols n=".." space=".."/>` (P19) | — |
 | **Vertical alignment** (`w:vertAlign`) | mapped to `<sup>`/`<sub>` | only sup/sub; other vertAlign values dropped |
-| **Multilingual** (`w:lang`) | propagated to `lang` attribute per element (BCP 47) | resolved in spec v1.0.1 |
-| **Code detection** (style/font heuristics) | pattern-matched to `<d:code>`; monospace font OR style name | false positives/negatives possible (custom styles named "Code" for non-code content) |
+| **Multilingual** (`w:lang`) | propagated to `lang` attribute per element (BCP 47) — block-level and `<span lang="...">` (P2) | resolved in spec v1.0.1 |
+| **Code detection** (style/font heuristics) | pattern-matched to `<pre>`; monospace font OR style name | false positives/negatives possible (custom styles named "Code" for non-code content) |
 
 ---
 
@@ -83,9 +86,9 @@ Removed on purpose to keep the semantic body clean. They do **not** appear in `w
 - **Processing mode**: `mode="semantic"` (default) normalizes whitespace; `mode="lossless"` preserves more layout detail for round-tripping.
 - **Whitespace**: in `semantic` mode, repeated spaces collapsed, `w:tab` → single space,
   `w:br`/`w:cr` → `<br/>`. Honors `xml:space="preserve"` when present on `<w:t>`.
-  **Exception**: content inside `<d:code>` preserves original spacing verbatim in both modes.
+  **Exception**: content inside `<pre>` preserves original spacing verbatim in both modes.
 - **Text**: kept verbatim (no translation/summarization). Tracked-deletion text is wrapped
-  in `<change type="delete">` in `lossless` mode; dropped in `semantic` mode.
+  in `<del>` in `lossless` mode; dropped in `semantic` mode.
 - **XML escaping**: `&`, `<`, `>`, `"` are escaped per XML 1.0. Forbidden control characters
   (0x00–0x08, 0x0B–0x0C, 0x0E–0x1F, 0x7F–0x84) are stripped. No CDATA sections emitted.
 
@@ -114,17 +117,17 @@ The following gaps were identified and addressed during specification review:
 
 | Issue | Resolution |
 |-------|-----------|
-| **Column identity ambiguity** in multiple/nested tables | `<s:col ref="n">` paired with `<d:table id="n">` (1-based index) |
-| **Grid integrity loss** from flatten `gridSpan`/`vMerge` | `colspan`/`rowspan` preserved as attributes on `<d:td>`/`<d:th>`, content not concatenated |
-| **Whitespace contradiction** with `<d:code>` | Content inside `<d:code>` excluded from whitespace normalization; literal tab preserved |
+| **Column identity ambiguity** in multiple/nested tables | `<s:col ref="n">` paired with `<table id="n">` (1-based index) |
+| **Grid integrity loss** from flatten `gridSpan`/`vMerge` | `colspan`/`rowspan` preserved as attributes on `<td>`/`<th>`, content not concatenated |
+| **Whitespace contradiction** with `<pre>` | Content inside `<pre>` excluded from whitespace normalization; literal tab preserved |
 | **Permanent footnote content loss** | `<notes>` container added after `</write>` to store footnote/endnote body text |
-| **Blind to list numbering restart** (`w:lvlOverride`) | `w:lvlOverride` detected; list split into separate `<d:ol>` elements with `start="n"` attribute |
-| **`<d:code>` trigger undefined** | Style name matching (`Code`, `Source`, `Output`) + fallback monospace font detection; inline formatting suppressed inside `<d:code>` |
-| **Nested list structure unclear** | `<d:ul>`/`<d:ol>` placed inside parent `<d:li>`; arbitrary depth, mixed types allowed |
-| **Sentence fragmentation** from inline textbox anchors | Runs before/after textbox anchor merged into single `<d:p>`; textbox content emitted as sibling elements afterward |
+| **Blind to list numbering restart** (`w:lvlOverride`) | `w:lvlOverride` detected; list split into separate `<ol>` elements with `start="n"` attribute |
+| **`<pre>` trigger undefined** | Style name matching (`Code`, `Source`, `Output`) + fallback monospace font detection; inline formatting suppressed inside `<pre>` |
+| **Nested list structure unclear** | `<ul>`/`<ol>` placed inside parent `<li>`; arbitrary depth, mixed types allowed |
+| **Sentence fragmentation** from inline textbox anchors | Runs before/after textbox anchor merged into single `<p>`; textbox content emitted as sibling elements afterward |
 | **Malformed XML** from verbatim text & URLs | All text and attributes escaped per XML 1.0 (`&`, `<`, `>`, `"`); forbidden control chars (0x00–0x08, etc.) stripped |
-| **Namespace XML undefined** | Three namespaces declared: `xmlns="urn:words:v1"` (structural), `xmlns:d="urn:words:v1:doc"` (block content), `xmlns:s="urn:words:v1:style"` (layout); inline elements use no prefix |
-| **DROP too aggressive** (justification, tracked changes) | `w:jc` → `<s:align>` in `<style>` (LOSSLESS_METADATA); `w:ins`/`w:del` → optional `<change>` |
+| **Namespace XML undefined** | Two namespaces declared: `xmlns="urn:words:v1"` (all elements), `xmlns:s="urn:words:v1:style"` (layout); block and inline elements use no prefix |
+| **DROP too aggressive** (justification, tracked changes) | `w:jc` → `<s:align>` in `<style>` (LOSSLESS_METADATA); `w:ins`/`w:del` → optional `<ins>`/`<del>` |
 | **Header/footer dropped** | Now KEPT in `<header>`/`<footer>` blocks per section, processed with normal transformation rules |
 | **Ambiguity marker vs body footnote** | Split: `<fn-ref id="n" type="footnote|endnote"/>` (marker) and `<fn id="n" type="...">` (body), `id` as connector |
 | **vMerge restart/continue unresolved** | Grid reconstruction algorithm: restart → rowspan, continue → omit |
@@ -134,8 +137,20 @@ The following gaps were identified and addressed during specification review:
 | **Missing document metadata** | `<meta>` block added with title/author/created/modified/keywords from `docProps/core.xml` |
 | **Language preservation optional** | `lang` attribute (BCP 47) now REQUIRED on all block elements |
 | **Font/size/color/highlight dropped** | Now preserved via `<span font=".." size=".." color=".." highlight="..">` inline element |
+| **Run language dropped** | Now preserved via `<span lang="...">` (P2) |
+| **Hidden text dropped** | Now preserved via `<span hidden="true">` (P9) |
+| **Line spacing dropped** | Now preserved via `<s:line>` in `<style>` (P1) |
+| **Text alignment dropped** | Now preserved via `<p valign="...">` (P8) |
+| **Table width dropped** | Now preserved via `<table width="...">` (P5) |
+| **Table alignment dropped** | Now preserved via `<table align="...">` (P6) |
+| **Table caption/summary dropped** | Now preserved via `<table caption="..." summary="...">` (P3/P4) |
+| **Cell vertical alignment dropped** | Now preserved via `<td valign="...">` / `<th valign="...">` (P7) |
+| **Table indentation dropped** | Now preserved via `<table indent="...">` (P10) |
+| **Cell spacing dropped** | Now preserved via `<table cellSpacing="...">` (P11) |
+| **Text direction in cell dropped** | Now preserved via `<td textDir="...">` / `<th textDir="...">` (P12) |
+| **No-wrap flag dropped** | Now preserved via `<td noWrap="true">` / `<th noWrap="true">` (P13) |
 | **`<style>` optional** | Now REQUIRED with at minimum `<s:page>` (size + margins); default unit changed to `in` |
-| **Borders dropped** | Now preserved via compact `at` attribute on `<d:p>`, `<d:h>`, `<td>`, `<th>`, `<table>` |
+| **Borders dropped** | Now preserved via compact `at` attribute on `<p>`, `<h1>`-`<h9>`, `<td>`, `<th>`, `<table>` |
 | **Bookmarks dropped** | Now preserved in `<notes>` as `<bm id="name"/>` |
 | **Comments dropped** | Now preserved in `<notes>` as `<comment id="n" author="..." date="...">text</comment>` |
 

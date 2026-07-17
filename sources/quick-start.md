@@ -66,7 +66,7 @@ docx-preprocess input.docx --with-metadata -o output.words.xml
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<words xmlns="urn:words:v1" xmlns:d="urn:words:v1:doc" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
+<words xmlns="urn:words:v1" xmlns:s="urn:words:v1:style" version="1.0.1" mode="semantic">
   <meta>
     <title>Document Title</title>
     <author>John Doe</author>
@@ -75,8 +75,8 @@ docx-preprocess input.docx --with-metadata -o output.words.xml
     <s:page size="A4" mt="0.75" mb="0.75" ml="0.75" mr="0.75" mh="0.5" mf="0.5"/>
   </style>
   <write>
-    <d:h c="Heading1" at="bb 12 s1 #000000">Introduction</d:h>
-    <d:p lang="en">This is a <b>bold</b> and <i>italic</i> paragraph.</d:p>
+    <h1 at="bb 12 s1 #000000">Introduction</h1>
+    <p lang="en">This is a <b>bold</b> and <i>italic</i> paragraph.</p>
   </write>
   <notes>
     <bm id="Section1"/>
